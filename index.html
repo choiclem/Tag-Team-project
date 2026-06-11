@@ -63,6 +63,11 @@
     .chip { border: 1px solid var(--line); background: white; border-radius: 999px; padding: 5px 10px; color: var(--muted); font-size: 11px; white-space: nowrap; }
     .chip.active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
     .feed { flex: 1; overflow: auto; padding: 20px; }
+    .personal-note-view { flex: 1; overflow: auto; padding: 28px; background: rgba(255,255,255,.34); }
+    .personal-note-card { max-width: 760px; min-height: 100%; margin: 0 auto; padding: 24px; background: #fffdf3; border: 1px solid #e3dfc9; border-radius: 16px; box-shadow: 0 16px 40px rgba(44,42,27,.06); }
+    .personal-note-card h2 { margin: 0 0 5px; font-size: 18px; letter-spacing: -.04em; }
+    .personal-note-card p { margin: 0 0 18px; color: var(--muted); font-size: 12px; }
+    .personal-note-editor { width: 100%; min-height: calc(100vh - 245px); resize: none; border: 0; outline: 0; background: transparent; line-height: 1.8; font-size: 14px; }
     .empty { max-width: 380px; margin: 80px auto; text-align: center; color: var(--muted); }
     .empty b { color: var(--ink); display: block; margin-bottom: 7px; }
     .entry { display: grid; grid-template-columns: 38px 1fr; gap: 10px; margin-bottom: 20px; }
@@ -132,6 +137,9 @@
       #mobileUserSelect { width: 88px; color: var(--accent); }
       .mobile-title { display: grid; place-items: center; width: 31px; height: 31px; border-radius: 9px; background: var(--ink); color: white; font-size: 10px; font-weight: 900; flex: 0 0 auto; }
       .feed { padding: 14px 10px; }
+      .personal-note-view { padding: 10px; }
+      .personal-note-card { padding: 15px; border-radius: 12px; }
+      .personal-note-editor { min-height: calc(100dvh - 155px); }
       .entry { grid-template-columns: 27px minmax(0, 1fr); gap: 8px; margin-bottom: 15px; }
       .entry .avatar { width: 27px; height: 27px; font-size: 9px; }
       .entry-head { margin-bottom: 4px; } .entry-time { font-size: 9px; } .entry-actions { display: none; }
@@ -182,6 +190,13 @@
         <div class="filter-row" id="filterRow"></div>
       </header>
       <section class="feed" id="feed"></section>
+      <section class="personal-note-view hidden" id="personalNoteView">
+        <div class="personal-note-card">
+          <h2 id="personalNoteTitle">Personal note</h2>
+          <p>개인적인 생각, 아이디어, 할 일을 자유롭게 기록하세요. 자동 저장됩니다.</p>
+          <textarea class="personal-note-editor" id="personalNoteEditor" placeholder="생각나는 내용을 자유롭게 적으세요..."></textarea>
+        </div>
+      </section>
       <section class="composer">
         <div id="imagePreview" class="preview hidden"></div>
         <textarea id="messageInput" placeholder="메시지 작성 · 스크린샷은 Ctrl+V · Enter로 등록 · Shift+Enter로 줄바꿈"></textarea>
@@ -195,11 +210,6 @@
     </main>
 
     <aside class="panel rightbar">
-      <section class="right-section">
-        <div class="right-head"><h2>Quick note</h2><span class="count" id="noteSaveState">saved</span></div>
-        <textarea class="note-area" id="quickNote" placeholder="할 일, 링크, 회의 메모를 자유롭게 적으세요..."></textarea>
-        <div class="note-hint">현재 사용자 전용 노트 · 자동 저장</div>
-      </section>
       <section class="right-section">
         <div class="right-head"><h2>Shared projects</h2><span class="count" id="projectCount"></span></div>
         <div id="sharedProjects"></div>
@@ -272,13 +282,13 @@
       renderSidebar(); renderHeader(); renderFeed(); renderRightbar(); renderUserChoices(); renderMobileBar();
       const u = activeUser();
       $("#activeAvatar").textContent = initials(u.name); $("#activeAvatar").style.background = u.color;
-      $("#activeName").textContent = u.name; $("#quickNote").value = u.note || "";
+      $("#activeName").textContent = u.name;
+      renderPersonalNote();
     }
     function renderSidebar() {
       $("#userSwitcher").innerHTML = Object.values(state.users).map(u => `<button class="user-switch ${state.activeUser === u.id ? "active" : ""}" style="--user-color:${u.color}" data-choose-user="${u.id}"><span class="dot" style="background:${u.color}"></span>${escapeHtml(u.name)}</button>`).join("");
       $("#personalFolders").innerHTML = Object.values(state.users).map(u => {
-        const count = state.entries.filter(e => e.userId === u.id).length;
-        return `<button class="nav-item" data-user-folder="${u.id}"><span class="dot" style="background:${u.color}"></span><span>${escapeHtml(u.name)} 개인 노트</span><span class="count">${count}</span></button>`;
+        return `<button class="nav-item ${state.activeView === "personalNote" && state.noteUser === u.id ? "active" : ""}" data-personal-note="${u.id}"><span class="dot" style="background:${u.color}"></span><span>${escapeHtml(u.name)} 개인 노트</span></button>`;
       }).join("");
       $("#sidebarProjects").innerHTML = state.projects.map(p => {
         const count = state.entries.filter(e => e.projectId === p.id).length;
@@ -294,10 +304,12 @@
     }
     function renderHeader() {
       const project = currentProject();
-      const labels = { project: project.name, all: "All activity", pinned: "Pinned updates", user: `${state.users[state.folderUser]?.name || ""}'s folder` };
+      const labels = { project: project.name, all: "All activity", pinned: "Pinned updates", personalNote: `${state.users[state.noteUser]?.name || ""} 개인 노트` };
       $("#projectTitle").textContent = labels[state.activeView] || project.name;
-      $("#projectSubtitle").textContent = state.activeView === "project" ? project.desc : "Filtered development journal";
+      $("#projectSubtitle").textContent = state.activeView === "personalNote" ? "Private thoughts and ideas" : state.activeView === "project" ? project.desc : "Filtered development journal";
       $("#deleteCurrentProjectBtn").classList.toggle("hidden", state.activeView !== "project");
+      $("#searchInput").closest(".search").classList.toggle("hidden", state.activeView === "personalNote");
+      $("#filterRow").classList.toggle("hidden", state.activeView === "personalNote");
       const filters = ["All", "Progress", "Done", "Blocked", "Idea", "Bug"];
       $("#filterRow").innerHTML = filters.map(f => `<button class="chip ${activeFilter === f ? "active" : ""}" data-filter="${f}">${f}</button>`).join("");
     }
@@ -305,13 +317,17 @@
       let list = [...state.entries];
       if (state.activeView === "project") list = list.filter(e => e.projectId === state.activeProject);
       if (state.activeView === "pinned") list = list.filter(e => e.pinned);
-      if (state.activeView === "user") list = list.filter(e => e.userId === state.folderUser);
       if (activeFilter !== "All") list = list.filter(e => e.status === activeFilter);
       const q = $("#searchInput").value.trim().toLowerCase();
       if (q) list = list.filter(e => `${e.text} ${e.status} ${state.users[e.userId]?.name}`.toLowerCase().includes(q));
       return list.sort((a,b) => Number(b.pinned) - Number(a.pinned) || a.createdAt - b.createdAt);
     }
     function renderFeed() {
+      const personal = state.activeView === "personalNote";
+      $("#feed").classList.toggle("hidden", personal);
+      $(".composer").classList.toggle("hidden", personal);
+      $("#personalNoteView").classList.toggle("hidden", !personal);
+      if (personal) return;
       const entries = getVisibleEntries();
       if (!entries.length) { $("#feed").innerHTML = `<div class="empty"><b>아직 기록이 없습니다.</b>첫 개발 업데이트를 남겨보세요. 짧아도 충분합니다.</div>`; return; }
       const grouped = entries.reduce((groups, entry) => {
@@ -342,6 +358,11 @@
         </article>`;
       }).join("");
       $("#feed").scrollTop = $("#feed").scrollHeight;
+    }
+    function renderPersonalNote() {
+      const user = state.users[state.noteUser] || activeUser();
+      $("#personalNoteTitle").textContent = `${user.name} 개인 노트`;
+      $("#personalNoteEditor").value = user.personalNote || "";
     }
     function renderRightbar() {
       $("#projectCount").textContent = `${state.projects.length} folders`;
@@ -448,7 +469,7 @@
       if (t.dataset.chooseUser) chooseUser(t.dataset.chooseUser);
       if (t.dataset.project) { state.activeProject = t.dataset.project; state.activeView = "project"; saveState(); render(); }
       if (t.dataset.deleteProject) deleteProject(t.dataset.deleteProject);
-      if (t.dataset.userFolder) { state.folderUser = t.dataset.userFolder; state.activeView = "user"; render(); }
+      if (t.dataset.personalNote) { state.noteUser = t.dataset.personalNote; state.activeView = "personalNote"; saveState(); render(); }
       if (t.dataset.view) { state.activeView = t.dataset.view; render(); }
       if (t.dataset.filter) { activeFilter = t.dataset.filter; renderHeader(); renderFeed(); }
       if (t.dataset.pin) { const x = state.entries.find(x => x.id === t.dataset.pin); x.pinned = !x.pinned; saveState(); render(); }
@@ -480,7 +501,14 @@
       pendingImages.splice(Number(button.dataset.removeImage), 1);
       renderImagePreview();
     };
-    $("#quickNote").addEventListener("input", e => { $("#noteSaveState").textContent = "saving..."; clearTimeout(window.noteTimer); window.noteTimer = setTimeout(() => { activeUser().note = e.target.value; saveState(); $("#noteSaveState").textContent = "saved"; }, 450); });
+    $("#personalNoteEditor").addEventListener("input", e => {
+      clearTimeout(window.personalNoteTimer);
+      window.personalNoteTimer = setTimeout(() => {
+        const user = state.users[state.noteUser] || activeUser();
+        user.personalNote = e.target.value;
+        saveState();
+      }, 350);
+    });
     $("#settingsBtn").onclick = openSettings;
     $("#deleteCurrentProjectBtn").onclick = () => deleteProject(state.activeProject);
     $("#addProjectBtn").onclick = openProjectModal;
