@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Devlog Duo</title>
+  <style>
+    :root {
+      --bg: #f4f4ef;
+      --panel: rgba(255,255,255,.84);
+      --ink: #18201b;
+      --muted: #778078;
+      --line: #dedfd8;
+      --accent: #1d6b4b;
+      --accent-soft: #dcebe2;
+      --shadow: 0 18px 50px rgba(32,42,35,.08);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; color: var(--ink); background:
+      radial-gradient(circle at 8% 0%, #e4eadc 0, transparent 29%),
+      radial-gradient(circle at 96% 94%, #e7ded1 0, transparent 30%), var(--bg);
+      font-family: Inter, "Noto Sans KR", system-ui, sans-serif;
+    }
+    button, input, textarea, select { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    .hidden { display: none !important; }
+    .app { display: grid; grid-template-columns: 250px minmax(420px, 1fr) 320px; gap: 14px; padding: 14px; height: 100vh; }
+    .panel { background: var(--panel); border: 1px solid rgba(255,255,255,.9); border-radius: var(--radius); box-shadow: var(--shadow); backdrop-filter: blur(16px); min-height: 0; }
+    .sidebar, .rightbar { padding: 18px; overflow: auto; }
+    .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+    .brand-mark { width: 36px; height: 36px; display: grid; place-items: center; background: var(--ink); color: white; border-radius: 11px; font-weight: 800; }
+    .brand strong { display: block; letter-spacing: -.04em; }
+    .brand small { color: var(--muted); }
+    .user-switcher { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 18px; }
+    .user-switch { border: 1px solid var(--line); background: white; border-radius: 10px; padding: 8px 5px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; font-weight: 700; }
+    .user-switch.active { border-color: var(--user-color); background: color-mix(in srgb, var(--user-color) 12%, white); color: var(--user-color); }
+    .user-switch .dot { width: 7px; height: 7px; }
+    .section-title { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; margin: 22px 8px 8px; }
+    .nav-item, .project-item { width: 100%; border: 0; background: transparent; display: flex; gap: 10px; align-items: center; padding: 10px; border-radius: 11px; text-align: left; }
+    .nav-item:hover, .project-item:hover, .project-item.active { background: #edf0e9; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+    .nav-item span:nth-child(2), .project-item span:nth-child(2) { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .count { color: var(--muted); font-size: 11px; }
+    .user-card { display: flex; align-items: center; gap: 10px; padding: 11px; background: #edf0e9; border-radius: 13px; margin-top: 16px; }
+    .avatar { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; color: white; font-weight: 800; flex: 0 0 auto; }
+    .user-card div:nth-child(2) { min-width: 0; flex: 1; }
+    .user-card strong, .user-card small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-card small { color: var(--muted); font-size: 11px; }
+    .icon-btn { width: 34px; height: 34px; border: 1px solid var(--line); background: white; border-radius: 10px; display: grid; place-items: center; }
+    .main { display: flex; flex-direction: column; overflow: hidden; }
+    .mobile-bar { display: none; }
+    .topbar { padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }
+    .topline { display: flex; align-items: center; gap: 10px; }
+    .project-heading { min-width: 0; flex: 1; }
+    .project-heading h1 { font-size: 21px; margin: 0 0 3px; letter-spacing: -.04em; }
+    .project-heading p { margin: 0; color: var(--muted); font-size: 12px; }
+    .search { position: relative; width: 150px; flex: 0 0 auto; }
+    .search input { width: 100%; padding: 7px 10px 7px 31px; border: 1px solid var(--line); background: rgba(255,255,255,.7); border-radius: 9px; outline: none; font-size: 11px; }
+    .search span { position: absolute; left: 13px; top: 9px; color: var(--muted); }
+    .filter-row { display: flex; gap: 6px; margin-top: 10px; overflow-x: auto; }
+    .chip { border: 1px solid var(--line); background: white; border-radius: 999px; padding: 5px 10px; color: var(--muted); font-size: 11px; white-space: nowrap; }
+    .chip.active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+    .feed { flex: 1; overflow: auto; padding: 20px; }
+    .empty { max-width: 380px; margin: 80px auto; text-align: center; color: var(--muted); }
+    .empty b { color: var(--ink); display: block; margin-bottom: 7px; }
+    .entry { display: grid; grid-template-columns: 38px 1fr; gap: 10px; margin-bottom: 20px; }
+    .entry.continuation { display: block; margin-left: 30px; margin-top: -13px; }
+    .entry.continuation .entry-head { justify-content: flex-end; margin-bottom: 3px; }
+    .entry.continuation .entry-time { opacity: .7; }
+    .entry-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; }
+    .entry-name { font-weight: 800; font-size: 13px; }
+    .entry-time { color: var(--muted); font-size: 10px; }
+    .pin { color: #c58b28; font-size: 11px; }
+    .entry-actions { margin-left: auto; opacity: 0; transition: opacity .2s; }
+    .entry:hover .entry-actions { opacity: 1; }
+    .entry-actions button { border: 0; background: transparent; color: var(--muted); font-size: 11px; }
+    .bubble { background: white; border: 1px solid var(--line); padding: 12px 14px; border-radius: 5px 15px 15px 15px; line-height: 1.55; font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+    .bubble img { display: block; max-width: min(100%, 520px); max-height: 380px; object-fit: cover; border-radius: 10px; margin-top: 10px; cursor: zoom-in; }
+    .status { padding: 3px 7px; border-radius: 99px; background: #fff0d7; color: #8b5d13; font-size: 10px; }
+    .composer { border-top: 1px solid var(--line); padding: 12px 16px 16px; background: rgba(255,255,255,.45); }
+    .preview { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    .preview-item { position: relative; display: inline-block; }
+    .preview img { width: 88px; height: 65px; object-fit: cover; border-radius: 8px; }
+    .preview button { position: absolute; top: -6px; right: -6px; border: 0; background: var(--ink); color: white; border-radius: 50%; width: 20px; height: 20px; }
+    .composer textarea { width: 100%; min-height: 70px; max-height: 170px; resize: vertical; border: 1px solid var(--line); background: white; border-radius: 13px; padding: 12px; outline: none; }
+    .compose-tools { display: flex; align-items: center; gap: 7px; margin-top: 8px; }
+    .compose-tools select { border: 1px solid var(--line); border-radius: 8px; background: white; padding: 7px 8px; font-size: 11px; min-width: 0; }
+    .send { margin-left: auto; border: 0; background: var(--ink); color: white; border-radius: 9px; padding: 8px 14px; font-weight: 700; font-size: 12px; }
+    .rightbar h2 { font-size: 15px; margin: 0; letter-spacing: -.03em; }
+    .right-section { margin-bottom: 24px; }
+    .right-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .note-area { width: 100%; min-height: 160px; resize: vertical; border: 1px solid #d9d8cc; background: #fffdf3; border-radius: 13px; padding: 13px; line-height: 1.6; outline: none; box-shadow: inset 0 -20px 0 rgba(246,232,167,.08); }
+    .note-hint { font-size: 10px; color: var(--muted); margin-top: 5px; }
+    .shared-project { width: 100%; display: flex; align-items: center; gap: 9px; border: 1px solid var(--line); background: white; padding: 10px; border-radius: 11px; margin-bottom: 7px; text-align: left; }
+    .shared-project.active { border-color: var(--accent); background: var(--accent-soft); }
+    .shared-project-wrap { position: relative; }
+    .shared-project-wrap .shared-project { padding-right: 35px; }
+    .delete-project { position: absolute; top: 8px; right: 7px; width: 25px; height: 25px; border: 0; background: transparent; color: var(--muted); border-radius: 7px; opacity: .45; }
+    .delete-project:hover { opacity: 1; color: #a33; background: #f7e7e4; }
+    .folder-icon { font-size: 17px; }
+    .shared-project strong { display: block; font-size: 12px; }
+    .shared-project small { display: block; font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .add-project { width: 100%; border: 1px dashed #b9beb8; background: transparent; color: var(--muted); padding: 9px; border-radius: 10px; }
+    .tip { padding: 12px; border-radius: 12px; background: #edf0e9; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .modal-wrap { position: fixed; inset: 0; background: rgba(20,26,22,.48); display: grid; place-items: center; padding: 18px; z-index: 20; backdrop-filter: blur(7px); }
+    .modal { width: min(450px, 100%); background: #fbfcf8; border-radius: 20px; padding: 22px; box-shadow: 0 30px 80px rgba(0,0,0,.25); }
+    .modal h2 { margin: 0 0 5px; letter-spacing: -.04em; }
+    .modal > p { color: var(--muted); margin: 0 0 18px; font-size: 12px; line-height: 1.6; }
+    .user-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .user-choice button { border: 1px solid var(--line); background: white; padding: 18px; border-radius: 14px; }
+    .user-choice .avatar { margin: 0 auto 8px; width: 42px; height: 42px; }
+    .form-group { margin: 14px 0; }
+    .form-group label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; border: 1px solid var(--line); background: white; padding: 9px; border-radius: 9px; }
+    .form-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 17px; }
+    .btn { border: 1px solid var(--line); background: white; padding: 8px 12px; border-radius: 9px; }
+    .btn.primary { background: var(--ink); color: white; border-color: var(--ink); }
+    .settings-users { display: grid; gap: 10px; }
+    .settings-row { display: grid; grid-template-columns: 1fr 50px; gap: 8px; }
+    .sync-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--ink); color: white; padding: 9px 14px; border-radius: 99px; font-size: 11px; z-index: 50; }
+    .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.8); display: grid; place-items: center; z-index: 60; padding: 30px; }
+    .lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; }
+    @media (max-width: 1050px) { .app { grid-template-columns: 220px 1fr; } .rightbar { display: none; } }
+    @media (max-width: 720px) {
+      body { background: #f4f4ef; }
+      .app { display: block; padding: 0; height: 100dvh; }
+      .sidebar, .rightbar, .topbar { display: none; }
+      .main { height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }
+      .mobile-bar { display: flex; align-items: center; gap: 8px; padding: max(9px, env(safe-area-inset-top)) 10px 9px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.94); }
+      .mobile-bar select { min-width: 0; border: 1px solid var(--line); background: white; border-radius: 10px; padding: 9px 8px; font-size: 12px; font-weight: 700; }
+      #mobileProjectSelect { flex: 1; }
+      #mobileUserSelect { width: 88px; color: var(--accent); }
+      .mobile-title { display: grid; place-items: center; width: 31px; height: 31px; border-radius: 9px; background: var(--ink); color: white; font-size: 10px; font-weight: 900; flex: 0 0 auto; }
+      .feed { padding: 14px 10px; }
+      .entry { grid-template-columns: 27px minmax(0, 1fr); gap: 8px; margin-bottom: 15px; }
+      .entry.continuation { display: block; margin-left: 22px; margin-top: -9px; }
+      .entry .avatar { width: 27px; height: 27px; font-size: 9px; }
+      .entry-head { margin-bottom: 4px; } .entry-time { font-size: 9px; } .entry-actions { display: none; }
+      .bubble { padding: 10px 11px; border-radius: 4px 13px 13px 13px; font-size: 13px; }
+      .bubble img { max-height: 260px; margin-top: 8px; }
+      .composer { padding: 8px 9px max(9px, env(safe-area-inset-bottom)); }
+      .composer textarea { min-height: 48px; max-height: 100px; padding: 10px; border-radius: 11px; }
+      .compose-tools { display: grid; grid-template-columns: 34px 94px 1fr; gap: 6px; margin-top: 6px; }
+      .compose-tools select { width: 94px; padding: 7px 4px; }
+      .send { margin-left: 0; width: 100%; padding: 8px; }
+      .preview { max-height: 72px; overflow-x: auto; flex-wrap: nowrap; padding-top: 5px; }
+      .preview img { width: 72px; height: 54px; }
+      .empty { margin: 50px auto; padding: 0 20px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="panel sidebar">
+      <div class="brand"><div class="brand-mark">&lt;/&gt;</div><div><strong>Devlog Duo</strong><small>Build, note, share.</small></div></div>
+      <div class="user-switcher" id="userSwitcher"></div>
+      <div class="section-title">Personal folders</div>
+      <div id="personalFolders"></div>
+      <div class="section-title">Project folders</div>
+      <div id="sidebarProjects"></div>
+      <div class="section-title">Views</div>
+      <button class="nav-item" data-view="pinned"><span>★</span><span>Pinned updates</span><span class="count" id="pinnedCount">0</span></button>
+      <button class="nav-item" data-view="all"><span>⌘</span><span>All activity</span><span class="count" id="allCount">0</span></button>
+      <div class="user-card">
+        <div class="avatar" id="activeAvatar">C</div>
+        <div><strong id="activeName">Clem</strong><small>Current writer</small></div>
+        <button class="icon-btn" id="settingsBtn" title="Settings">⚙</button>
+      </div>
+    </aside>
+
+    <main class="panel main">
+      <div class="mobile-bar">
+        <div class="mobile-title">&lt;/&gt;</div>
+        <select id="mobileProjectSelect" aria-label="프로젝트 선택"></select>
+        <select id="mobileUserSelect" aria-label="작성자 선택"></select>
+      </div>
+      <header class="topbar">
+        <div class="topline">
+          <div class="project-heading"><h1 id="projectTitle">Loading...</h1><p id="projectSubtitle">Shared development journal</p></div>
+          <div class="search"><span>⌕</span><input id="searchInput" placeholder="Search"></div>
+          <button class="icon-btn" id="deleteCurrentProjectBtn" title="현재 프로젝트 삭제">×</button>
+        </div>
+        <div class="filter-row" id="filterRow"></div>
+      </header>
+      <section class="feed" id="feed"></section>
+      <section class="composer">
+        <div id="imagePreview" class="preview hidden"></div>
+        <textarea id="messageInput" placeholder="메시지 작성 · 스크린샷은 Ctrl+V · Enter로 등록 · Shift+Enter로 줄바꿈"></textarea>
+        <div class="compose-tools">
+          <button class="icon-btn" id="imageBtn" title="사진 첨부">＋</button>
+          <input class="hidden" type="file" accept="image/*" multiple id="imageInput">
+          <select id="statusInput"><option>Progress</option><option>Done</option><option>Blocked</option><option>Idea</option><option>Bug</option></select>
+          <button class="send" id="sendBtn">Post update</button>
+        </div>
+      </section>
+    </main>
+
+    <aside class="panel rightbar">
+      <section class="right-section">
+        <div class="right-head"><h2>Quick note</h2><span class="count" id="noteSaveState">saved</span></div>
+        <textarea class="note-area" id="quickNote" placeholder="할 일, 링크, 회의 메모를 자유롭게 적으세요..."></textarea>
+        <div class="note-hint">현재 사용자 전용 노트 · 자동 저장</div>
+      </section>
+      <section class="right-section">
+        <div class="right-head"><h2>Shared projects</h2><span class="count" id="projectCount"></span></div>
+        <div id="sharedProjects"></div>
+        <button class="add-project" id="addProjectBtn">＋ Add project folder</button>
+      </section>
+      <section class="right-section">
+        <div class="right-head"><h2>데이터 백업</h2></div>
+        <div class="sync-actions"><button class="btn" id="exportBtn">백업 저장</button><button class="btn" id="importBtn">백업 불러오기</button></div>
+        <input class="hidden" type="file" accept=".json,application/json" id="importInput">
+      </section>
+      <div class="tip"><b>백업 기능 안내</b><br>기록을 JSON 파일로 저장하거나 복원하는 기능입니다. GitHub와 자동으로 동기화되지는 않습니다.</div>
+    </aside>
+  </div>
+
+  <div class="modal-wrap hidden" id="userModal">
+    <div class="modal"><h2>누가 기록하나요?</h2><p>처음 사용할 작성자를 선택하세요. 이후에는 왼쪽 위 Clem / Ryan 버튼으로 바로 전환할 수 있습니다.</p><div class="user-choice" id="userChoices"></div></div>
+  </div>
+  <div class="modal-wrap hidden" id="formModal"><div class="modal" id="formModalContent"></div></div>
+  <div class="toast hidden" id="toast"></div>
+  <div class="lightbox hidden" id="lightbox"><img alt="Attached preview"></div>
+
+  <script>
+    const STORE_KEY = "devlog-duo-v1";
+    const seed = {
+      users: {
+        clem: { id: "clem", name: "Clem", color: "#2f7d5b", note: "- 오늘 확인할 PR\\n- API 에러 로그 정리" },
+        ryan: { id: "ryan", name: "Ryan", color: "#8a5a9d", note: "- 배포 전 체크리스트\\n- UI 간격 다시 보기" }
+      },
+      projects: [
+        { id: "launch", name: "Product Launch", desc: "MVP launch checklist", color: "#d47b47" },
+        { id: "website", name: "Website Refresh", desc: "Design & frontend", color: "#4d82a8" },
+        { id: "lab", name: "Idea Lab", desc: "Experiments and research", color: "#8a7a44" }
+      ],
+      entries: [
+        { id: crypto.randomUUID(), projectId: "launch", userId: "clem", text: "로그인 플로우 정리 완료. 이메일 인증 후 온보딩 화면으로 바로 연결되도록 수정했습니다.", status: "Done", pinned: true, createdAt: Date.now() - 7200000 },
+        { id: crypto.randomUUID(), projectId: "launch", userId: "ryan", text: "모바일에서 버튼이 화면 아래로 밀리는 이슈 발견. 내일 오전에 safe-area 포함해서 수정할게요.", status: "Bug", pinned: false, createdAt: Date.now() - 3600000 },
+        { id: crypto.randomUUID(), projectId: "website", userId: "clem", text: "새 컬러 팔레트와 카드 컴포넌트 초안 추가. 밝은 배경에서도 대비가 충분한지 확인 필요.", status: "Progress", pinned: false, createdAt: Date.now() - 1800000 }
+      ],
+      activeUser: null, activeProject: "launch", activeView: "project", settings: { showNames: true }
+    };
+    let state = loadState();
+    let pendingImages = [];
+    let activeFilter = "All";
+
+    const $ = s => document.querySelector(s);
+    const $$ = s => [...document.querySelectorAll(s)];
+    const escapeHtml = str => String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+    function loadState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORE_KEY));
+        return saved ? { ...seed, ...saved, settings: { ...seed.settings, ...saved.settings } } : structuredClone(seed);
+      } catch { return structuredClone(seed); }
+    }
+    function saveState() {
+      try {
+        localStorage.setItem(STORE_KEY, JSON.stringify(state));
+        return true;
+      } catch {
+        toast("저장 공간이 부족합니다. 오래된 사진 기록을 삭제해주세요");
+        return false;
+      }
+    }
+    function toast(msg) { const el = $("#toast"); el.textContent = msg; el.classList.remove("hidden"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.add("hidden"), 1800); }
+    function initials(name) { return name.trim().split(/\s+/).map(x => x[0]).join("").slice(0,2).toUpperCase(); }
+    function formatTime(ts) { return new Intl.DateTimeFormat("ko-KR", { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" }).format(ts); }
+    function activeUser() { return state.users[state.activeUser] || state.users.clem; }
+    function currentProject() { return state.projects.find(p => p.id === state.activeProject) || state.projects[0]; }
+
+    function render() {
+      renderSidebar(); renderHeader(); renderFeed(); renderRightbar(); renderUserChoices(); renderMobileBar();
+      const u = activeUser();
+      $("#activeAvatar").textContent = initials(u.name); $("#activeAvatar").style.background = u.color;
+      $("#activeName").textContent = u.name; $("#quickNote").value = u.note || "";
+    }
+    function renderSidebar() {
+      $("#userSwitcher").innerHTML = Object.values(state.users).map(u => `<button class="user-switch ${state.activeUser === u.id ? "active" : ""}" style="--user-color:${u.color}" data-choose-user="${u.id}"><span class="dot" style="background:${u.color}"></span>${escapeHtml(u.name)}</button>`).join("");
+      $("#personalFolders").innerHTML = Object.values(state.users).map(u => {
+        const count = state.entries.filter(e => e.userId === u.id).length;
+        return `<button class="nav-item" data-user-folder="${u.id}"><span class="dot" style="background:${u.color}"></span><span>${escapeHtml(u.name)} 개인 노트</span><span class="count">${count}</span></button>`;
+      }).join("");
+      $("#sidebarProjects").innerHTML = state.projects.map(p => {
+        const count = state.entries.filter(e => e.projectId === p.id).length;
+        return `<button class="project-item ${state.activeView === "project" && p.id === state.activeProject ? "active" : ""}" data-project="${p.id}"><span class="folder-icon" style="color:${p.color}">▰</span><span>${escapeHtml(p.name)}</span><span class="count">${count}</span></button>`;
+      }).join("");
+      $("#pinnedCount").textContent = state.entries.filter(e => e.pinned).length;
+      $("#allCount").textContent = state.entries.length;
+    }
+    function renderMobileBar() {
+      $("#mobileProjectSelect").innerHTML = state.projects.map(p => `<option value="${p.id}" ${p.id === state.activeProject ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("");
+      $("#mobileUserSelect").innerHTML = Object.values(state.users).map(u => `<option value="${u.id}" ${u.id === state.activeUser ? "selected" : ""}>${escapeHtml(u.name)}</option>`).join("");
+      $("#mobileUserSelect").style.color = activeUser().color;
+    }
+    function renderHeader() {
+      const project = currentProject();
+      const labels = { project: project.name, all: "All activity", pinned: "Pinned updates", user: `${state.users[state.folderUser]?.name || ""}'s folder` };
+      $("#projectTitle").textContent = labels[state.activeView] || project.name;
+      $("#projectSubtitle").textContent = state.activeView === "project" ? project.desc : "Filtered development journal";
+      $("#deleteCurrentProjectBtn").classList.toggle("hidden", state.activeView !== "project");
+      const filters = ["All", "Progress", "Done", "Blocked", "Idea", "Bug"];
+      $("#filterRow").innerHTML = filters.map(f => `<button class="chip ${activeFilter === f ? "active" : ""}" data-filter="${f}">${f}</button>`).join("");
+    }
+    function getVisibleEntries() {
+      let list = [...state.entries];
+      if (state.activeView === "project") list = list.filter(e => e.projectId === state.activeProject);
+      if (state.activeView === "pinned") list = list.filter(e => e.pinned);
+      if (state.activeView === "user") list = list.filter(e => e.userId === state.folderUser);
+      if (activeFilter !== "All") list = list.filter(e => e.status === activeFilter);
+      const q = $("#searchInput").value.trim().toLowerCase();
+      if (q) list = list.filter(e => `${e.text} ${e.status} ${state.users[e.userId]?.name}`.toLowerCase().includes(q));
+      return list.sort((a,b) => Number(b.pinned) - Number(a.pinned) || a.createdAt - b.createdAt);
+    }
+    function renderFeed() {
+      const entries = getVisibleEntries();
+      if (!entries.length) { $("#feed").innerHTML = `<div class="empty"><b>아직 기록이 없습니다.</b>첫 개발 업데이트를 남겨보세요. 짧아도 충분합니다.</div>`; return; }
+      $("#feed").innerHTML = entries.map((e, index) => {
+        const u = state.users[e.userId] || { name: "Unknown", color: "#777" };
+        const previous = entries[index - 1];
+        const continuation = previous && previous.userId === e.userId && !e.pinned && !previous.pinned && e.createdAt - previous.createdAt < 1800000;
+        return `<article class="entry ${continuation ? "continuation" : ""}">
+          ${continuation ? "" : `<div class="avatar" style="background:${u.color}">${initials(u.name)}</div>`}
+          <div><div class="entry-head">
+            ${!continuation && state.settings.showNames ? `<span class="entry-name" style="color:${u.color}">${escapeHtml(u.name)}</span>` : ""}
+            ${!continuation ? `<span class="status">${escapeHtml(e.status)}</span>` : ""}
+            <span class="entry-time">${formatTime(e.createdAt)}</span>${e.pinned ? `<span class="pin">★ pinned</span>` : ""}
+            <span class="entry-actions"><button data-pin="${e.id}">${e.pinned ? "Unpin" : "Pin"}</button><button data-delete="${e.id}">Delete</button></span>
+          </div><div class="bubble">${escapeHtml(e.text)}${[...(e.images || []), ...(e.image ? [e.image] : [])].map(src => `<img src="${src}" alt="Attached image">`).join("")}</div>
+          </div>
+        </article>`;
+      }).join("");
+      $("#feed").scrollTop = $("#feed").scrollHeight;
+    }
+    function renderRightbar() {
+      $("#projectCount").textContent = `${state.projects.length} folders`;
+      $("#sharedProjects").innerHTML = state.projects.map(p => {
+        const count = state.entries.filter(e => e.projectId === p.id).length;
+        return `<div class="shared-project-wrap"><button class="shared-project ${state.activeView === "project" && p.id === state.activeProject ? "active" : ""}" data-project="${p.id}">
+          <span class="folder-icon" style="color:${p.color}">▰</span><span><strong>${escapeHtml(p.name)}</strong><small>${count} updates · ${escapeHtml(p.desc)}</small></span></button>
+          <button class="delete-project" data-delete-project="${p.id}" title="프로젝트 삭제">×</button></div>`;
+      }).join("");
+    }
+    function deleteProject(id) {
+      if (state.projects.length <= 1) return toast("프로젝트는 최소 한 개가 필요합니다");
+      const project = state.projects.find(p => p.id === id);
+      const count = state.entries.filter(e => e.projectId === id).length;
+      if (!project || !confirm(`"${project.name}" 프로젝트와 기록 ${count}개를 모두 삭제할까요?`)) return;
+      state.projects = state.projects.filter(p => p.id !== id);
+      state.entries = state.entries.filter(e => e.projectId !== id);
+      if (state.activeProject === id) state.activeProject = state.projects[0].id;
+      state.activeView = "project";
+      saveState(); render(); toast("프로젝트를 삭제했습니다");
+    }
+    function renderUserChoices() {
+      $("#userChoices").innerHTML = Object.values(state.users).map(u => `<button data-choose-user="${u.id}"><span class="avatar" style="background:${u.color}">${initials(u.name)}</span><strong>${escapeHtml(u.name)}</strong></button>`).join("");
+    }
+    function chooseUser(id) { state.activeUser = id; saveState(); $("#userModal").classList.add("hidden"); render(); toast(`${state.users[id].name}으로 전환했습니다`); }
+    function postEntry() {
+      const text = $("#messageInput").value.trim();
+      if (!text && !pendingImages.length) return toast("내용 또는 사진을 추가해주세요");
+      const entry = { id: crypto.randomUUID(), projectId: state.activeProject, userId: state.activeUser, text, images: [...pendingImages], status: $("#statusInput").value, pinned: false, createdAt: Date.now() };
+      state.entries.push(entry);
+      state.activeView = "project";
+      activeFilter = "All";
+      $("#searchInput").value = "";
+      if (!saveState()) {
+        state.entries = state.entries.filter(e => e.id !== entry.id);
+        return;
+      }
+      $("#messageInput").value = "";
+      pendingImages = [];
+      renderImagePreview();
+      render();
+      toast("개발일지를 등록했습니다");
+    }
+    function renderImagePreview() {
+      const box = $("#imagePreview");
+      box.innerHTML = pendingImages.map((src, i) => `<span class="preview-item"><img src="${src}" alt="첨부 미리보기"><button data-remove-image="${i}">×</button></span>`).join("");
+      box.classList.toggle("hidden", !pendingImages.length);
+    }
+    function compressImage(file) {
+      return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const image = new Image();
+          image.onload = () => {
+            const max = 1600;
+            const scale = Math.min(1, max / Math.max(image.width, image.height));
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.max(1, Math.round(image.width * scale));
+            canvas.height = Math.max(1, Math.round(image.height * scale));
+            const context = canvas.getContext("2d");
+            context.fillStyle = "#ffffff";
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL("image/jpeg", .82));
+          };
+          image.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    async function addImageFiles(files) {
+      const images = [...files].filter(file => file.type.startsWith("image/"));
+      for (const file of images) {
+        const compressed = await compressImage(file);
+        pendingImages.push(compressed);
+        renderImagePreview();
+      }
+      if (images.length) toast("사진을 첨부했습니다");
+    }
+    function openProjectModal() {
+      $("#formModalContent").innerHTML = `<h2>새 공유 프로젝트</h2><p>프로젝트별로 개발일지를 나눠 관리할 수 있습니다.</p>
+        <div class="form-group"><label>Project name</label><input id="newProjectName" placeholder="예: Mobile App v2"></div>
+        <div class="form-group"><label>Description</label><input id="newProjectDesc" placeholder="무엇을 만드는 프로젝트인가요?"></div>
+        <div class="form-group"><label>Folder color</label><input id="newProjectColor" type="color" value="#4d82a8"></div>
+        <div class="form-actions"><button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="createProjectBtn">Create folder</button></div>`;
+      $("#formModal").classList.remove("hidden");
+    }
+    function openSettings() {
+      const users = Object.values(state.users);
+      $("#formModalContent").innerHTML = `<h2>Settings</h2><p>작성자 이름과 글 색상, 표시 방식을 설정하고 데이터를 관리합니다.</p>
+        <div class="settings-users">${users.map(u => `<div class="settings-row"><input data-name-setting="${u.id}" value="${escapeHtml(u.name)}"><input data-color-setting="${u.id}" type="color" value="${u.color}"></div>`).join("")}</div>
+        <div class="form-group"><label><input type="checkbox" id="showNamesSetting" ${state.settings.showNames ? "checked" : ""}> 글 옆에 작성자 이름 표시</label></div>
+        <div class="form-actions"><button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="saveSettingsBtn">Save settings</button></div>`;
+      $("#formModal").classList.remove("hidden");
+    }
+    function exportData() {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `devlog-duo-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href);
+    }
+
+    document.addEventListener("click", e => {
+      const t = e.target.closest("button, img");
+      if (!t) return;
+      if (t.dataset.chooseUser) chooseUser(t.dataset.chooseUser);
+      if (t.dataset.project) { state.activeProject = t.dataset.project; state.activeView = "project"; saveState(); render(); }
+      if (t.dataset.deleteProject) deleteProject(t.dataset.deleteProject);
+      if (t.dataset.userFolder) { state.folderUser = t.dataset.userFolder; state.activeView = "user"; render(); }
+      if (t.dataset.view) { state.activeView = t.dataset.view; render(); }
+      if (t.dataset.filter) { activeFilter = t.dataset.filter; renderHeader(); renderFeed(); }
+      if (t.dataset.pin) { const x = state.entries.find(x => x.id === t.dataset.pin); x.pinned = !x.pinned; saveState(); render(); }
+      if (t.dataset.delete && confirm("이 기록을 삭제할까요?")) { state.entries = state.entries.filter(x => x.id !== t.dataset.delete); saveState(); render(); }
+      if (t.dataset.closeModal !== undefined || t.id === "formModal") $("#formModal").classList.add("hidden");
+      if (t.matches(".bubble img")) { $("#lightbox img").src = t.src; $("#lightbox").classList.remove("hidden"); }
+    });
+    $("#sendBtn").onclick = postEntry;
+    $("#messageInput").addEventListener("keydown", e => {
+      if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
+      e.preventDefault();
+      postEntry();
+    });
+    $("#searchInput").addEventListener("input", renderFeed);
+    $("#mobileProjectSelect").addEventListener("change", e => { state.activeProject = e.target.value; state.activeView = "project"; saveState(); render(); });
+    $("#mobileUserSelect").addEventListener("change", e => chooseUser(e.target.value));
+    $("#imageBtn").onclick = () => $("#imageInput").click();
+    $("#imageInput").onchange = e => { addImageFiles(e.target.files); e.target.value = ""; };
+    $("#messageInput").addEventListener("paste", e => {
+      const images = [...e.clipboardData.items].filter(item => item.type.startsWith("image/")).map(item => item.getAsFile()).filter(Boolean);
+      if (!images.length) return;
+      e.preventDefault();
+      addImageFiles(images);
+    });
+    $("#imagePreview").onclick = e => {
+      const button = e.target.closest("[data-remove-image]");
+      if (!button) return;
+      pendingImages.splice(Number(button.dataset.removeImage), 1);
+      renderImagePreview();
+    };
+    $("#quickNote").addEventListener("input", e => { $("#noteSaveState").textContent = "saving..."; clearTimeout(window.noteTimer); window.noteTimer = setTimeout(() => { activeUser().note = e.target.value; saveState(); $("#noteSaveState").textContent = "saved"; }, 450); });
+    $("#settingsBtn").onclick = openSettings;
+    $("#deleteCurrentProjectBtn").onclick = () => deleteProject(state.activeProject);
+    $("#addProjectBtn").onclick = openProjectModal;
+    $("#exportBtn").onclick = exportData;
+    $("#importBtn").onclick = () => $("#importInput").click();
+    $("#importInput").onchange = e => {
+      const r = new FileReader(); r.onload = () => { try { state = JSON.parse(r.result); saveState(); render(); toast("백업을 불러왔습니다"); } catch { toast("올바른 JSON 파일이 아닙니다"); } }; r.readAsText(e.target.files[0]);
+    };
+    $("#formModal").addEventListener("click", e => {
+      if (e.target.id === "createProjectBtn") {
+        const name = $("#newProjectName").value.trim(); if (!name) return toast("프로젝트 이름을 입력해주세요");
+        const id = crypto.randomUUID(); state.projects.push({ id, name, desc: $("#newProjectDesc").value.trim() || "Shared project", color: $("#newProjectColor").value }); state.activeProject = id; state.activeView = "project"; saveState(); $("#formModal").classList.add("hidden"); render();
+      }
+      if (e.target.id === "saveSettingsBtn") {
+        $$("[data-name-setting]").forEach(x => state.users[x.dataset.nameSetting].name = x.value.trim() || state.users[x.dataset.nameSetting].name);
+        $$("[data-color-setting]").forEach(x => state.users[x.dataset.colorSetting].color = x.value);
+        state.settings.showNames = $("#showNamesSetting").checked; saveState(); $("#formModal").classList.add("hidden"); render(); toast("설정을 저장했습니다");
+      }
+    });
+    $("#lightbox").onclick = () => $("#lightbox").classList.add("hidden");
+    render();
+    if (!state.activeUser) $("#userModal").classList.remove("hidden");
+  </script>
+</body>
+</html>
