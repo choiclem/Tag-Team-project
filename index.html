@@ -66,9 +66,6 @@
     .empty { max-width: 380px; margin: 80px auto; text-align: center; color: var(--muted); }
     .empty b { color: var(--ink); display: block; margin-bottom: 7px; }
     .entry { display: grid; grid-template-columns: 38px 1fr; gap: 10px; margin-bottom: 20px; }
-    .entry.continuation { display: block; margin-left: 30px; margin-top: -13px; }
-    .entry.continuation .entry-head { justify-content: flex-end; margin-bottom: 3px; }
-    .entry.continuation .entry-time { opacity: .7; }
     .entry-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; }
     .entry-name { font-weight: 800; font-size: 13px; }
     .entry-time { color: var(--muted); font-size: 10px; }
@@ -136,7 +133,6 @@
       .mobile-title { display: grid; place-items: center; width: 31px; height: 31px; border-radius: 9px; background: var(--ink); color: white; font-size: 10px; font-weight: 900; flex: 0 0 auto; }
       .feed { padding: 14px 10px; }
       .entry { grid-template-columns: 27px minmax(0, 1fr); gap: 8px; margin-bottom: 15px; }
-      .entry.continuation { display: block; margin-left: 22px; margin-top: -9px; }
       .entry .avatar { width: 27px; height: 27px; font-size: 9px; }
       .entry-head { margin-bottom: 4px; } .entry-time { font-size: 9px; } .entry-actions { display: none; }
       .bubble { padding: 10px 11px; border-radius: 4px 13px 13px 13px; font-size: 13px; }
@@ -318,18 +314,30 @@
     function renderFeed() {
       const entries = getVisibleEntries();
       if (!entries.length) { $("#feed").innerHTML = `<div class="empty"><b>아직 기록이 없습니다.</b>첫 개발 업데이트를 남겨보세요. 짧아도 충분합니다.</div>`; return; }
-      $("#feed").innerHTML = entries.map((e, index) => {
+      const grouped = entries.reduce((groups, entry) => {
+        const previous = groups[groups.length - 1];
+        if (previous && previous.userId === entry.userId && !previous.pinned && !entry.pinned) {
+          previous.items.push(entry);
+          previous.text = previous.items.map(item => item.text).filter(Boolean).join("\n");
+          previous.images = previous.items.flatMap(item => [...(item.images || []), ...(item.image ? [item.image] : [])]);
+          previous.status = entry.status;
+          previous.createdAt = entry.createdAt;
+          previous.lastId = entry.id;
+          return groups;
+        }
+        groups.push({ ...entry, items: [entry], images: [...(entry.images || []), ...(entry.image ? [entry.image] : [])], lastId: entry.id });
+        return groups;
+      }, []);
+      $("#feed").innerHTML = grouped.map(e => {
         const u = state.users[e.userId] || { name: "Unknown", color: "#777" };
-        const previous = entries[index - 1];
-        const continuation = previous && previous.userId === e.userId && !e.pinned && !previous.pinned && e.createdAt - previous.createdAt < 1800000;
-        return `<article class="entry ${continuation ? "continuation" : ""}">
-          ${continuation ? "" : `<div class="avatar" style="background:${u.color}">${initials(u.name)}</div>`}
+        return `<article class="entry">
+          <div class="avatar" style="background:${u.color}">${initials(u.name)}</div>
           <div><div class="entry-head">
-            ${!continuation && state.settings.showNames ? `<span class="entry-name" style="color:${u.color}">${escapeHtml(u.name)}</span>` : ""}
-            ${!continuation ? `<span class="status">${escapeHtml(e.status)}</span>` : ""}
+            ${state.settings.showNames ? `<span class="entry-name" style="color:${u.color}">${escapeHtml(u.name)}</span>` : ""}
+            <span class="status">${escapeHtml(e.status)}</span>
             <span class="entry-time">${formatTime(e.createdAt)}</span>${e.pinned ? `<span class="pin">★ pinned</span>` : ""}
-            <span class="entry-actions"><button data-pin="${e.id}">${e.pinned ? "Unpin" : "Pin"}</button><button data-delete="${e.id}">Delete</button></span>
-          </div><div class="bubble">${escapeHtml(e.text)}${[...(e.images || []), ...(e.image ? [e.image] : [])].map(src => `<img src="${src}" alt="Attached image">`).join("")}</div>
+            <span class="entry-actions"><button data-pin="${e.lastId}">${e.pinned ? "Unpin" : "Pin"}</button><button data-delete-group="${e.items.map(item => item.id).join(",")}">Delete</button></span>
+          </div><div class="bubble">${escapeHtml(e.text)}${e.images.map(src => `<img src="${src}" alt="Attached image">`).join("")}</div>
           </div>
         </article>`;
       }).join("");
@@ -445,6 +453,7 @@
       if (t.dataset.filter) { activeFilter = t.dataset.filter; renderHeader(); renderFeed(); }
       if (t.dataset.pin) { const x = state.entries.find(x => x.id === t.dataset.pin); x.pinned = !x.pinned; saveState(); render(); }
       if (t.dataset.delete && confirm("이 기록을 삭제할까요?")) { state.entries = state.entries.filter(x => x.id !== t.dataset.delete); saveState(); render(); }
+      if (t.dataset.deleteGroup && confirm("묶인 기록을 모두 삭제할까요?")) { const ids = t.dataset.deleteGroup.split(","); state.entries = state.entries.filter(x => !ids.includes(x.id)); saveState(); render(); }
       if (t.dataset.closeModal !== undefined || t.id === "formModal") $("#formModal").classList.add("hidden");
       if (t.matches(".bubble img")) { $("#lightbox img").src = t.src; $("#lightbox").classList.remove("hidden"); }
     });
