@@ -76,11 +76,11 @@
     .empty { max-width: 380px; margin: 80px auto; text-align: center; color: var(--muted); }
     .empty b { color: var(--ink); display: block; margin-bottom: 7px; }
     .entry { display: grid; grid-template-columns: 38px 1fr; gap: 10px; margin-bottom: 8px; }
-    .pinned-stack { position: sticky; top: -20px; z-index: 5; padding: 20px 0 3px; margin-top: -20px; background: linear-gradient(var(--bg) 82%, transparent); }
+    .pinned-stack { position: sticky; top: -20px; z-index: 5; padding: 20px 8px 7px; margin: -20px -8px 4px; border-radius: 0 0 12px 12px; background: linear-gradient(#ded8c3 88%, rgba(222,216,195,.2)); box-shadow: 0 5px 14px rgba(74,64,39,.12); }
     .pinned-stack:empty { display: none; }
     .pinned-stack .entry { margin-bottom: 6px; }
-    .pinned-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; padding: 0 4px; color: #9a6b1c; font-size: 10px; font-weight: 800; }
-    .pinned-toggle { border: 0; background: transparent; color: var(--muted); font-size: 10px; padding: 3px 5px; }
+    .pinned-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; padding: 2px 5px; color: #765013; font-size: 13px; font-weight: 900; }
+    .pinned-toggle { border: 1px solid rgba(90,72,34,.22); background: rgba(255,255,255,.55); color: #5f4a24; border-radius: 7px; font-size: 12px; font-weight: 800; padding: 5px 9px; }
     .entry-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; }
     .entry-name { font-weight: 800; font-size: 13px; }
     .source-label { padding: 2px 6px; border-radius: 6px; background: #edf0e9; color: var(--muted); font-size: 9px; font-weight: 800; }
