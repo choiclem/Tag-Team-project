@@ -19,14 +19,14 @@
       --app-height: 100vh;
     }
     :root[data-theme="dark"] {
-      --bg: #121714;
-      --panel: rgba(28,35,30,.92);
-      --ink: #eef3ef;
-      --muted: #9aa69e;
-      --line: #3a443d;
-      --accent: #72c69c;
-      --accent-soft: #263d31;
-      --shadow: 0 18px 50px rgba(0,0,0,.28);
+      --bg: #0d0d0d;
+      --panel: rgba(23,23,23,.94);
+      --ink: #f2f2f2;
+      --muted: #a1a1aa;
+      --line: #343434;
+      --accent: #d4d4d4;
+      --accent-soft: #292929;
+      --shadow: 0 18px 50px rgba(0,0,0,.38);
     }
     * { box-sizing: border-box; }
     body {
@@ -35,7 +35,7 @@
       radial-gradient(circle at 96% 94%, #e7ded1 0, transparent 30%), var(--bg);
       font-family: Inter, "Noto Sans KR", system-ui, sans-serif;
     }
-    :root[data-theme="dark"] body { background: radial-gradient(circle at 8% 0%, #26362d 0, transparent 29%), radial-gradient(circle at 96% 94%, #332b25 0, transparent 30%), var(--bg); }
+    :root[data-theme="dark"] body { background: radial-gradient(circle at 8% 0%, #242424 0, transparent 29%), radial-gradient(circle at 96% 94%, #1c1c1c 0, transparent 30%), var(--bg); }
     :root[data-theme="dark"] .panel,
     :root[data-theme="dark"] .composer,
     :root[data-theme="dark"] .mobile-bar { border-color: var(--line); }
@@ -49,32 +49,32 @@
     :root[data-theme="dark"] .form-group input,
     :root[data-theme="dark"] .form-group textarea,
     :root[data-theme="dark"] .form-group select,
-    :root[data-theme="dark"] .mobile-bar select { background-color: #202822; color: var(--ink); }
-    :root[data-theme="dark"] .personal-note-card { background: #24261f; border-color: #49483c; }
-    :root[data-theme="dark"] .modal { background: #1c241f; }
+    :root[data-theme="dark"] .mobile-bar select { background-color: #202020; color: var(--ink); }
+    :root[data-theme="dark"] .personal-note-card { background: #1f1f1f; border-color: #444; }
+    :root[data-theme="dark"] .modal { background: #1b1b1b; }
     :root[data-theme="dark"] .user-card,
     :root[data-theme="dark"] .nav-item:hover,
     :root[data-theme="dark"] .nav-item.active,
     :root[data-theme="dark"] .project-item:hover,
-    :root[data-theme="dark"] .project-item.active { background: #29332c; }
+    :root[data-theme="dark"] .project-item.active { background: #292929; }
     :root[data-theme="dark"] .brand-mark,
     :root[data-theme="dark"] .send,
     :root[data-theme="dark"] .btn.primary,
     :root[data-theme="dark"] .mobile-title,
     :root[data-theme="dark"] .toast,
     :root[data-theme="dark"] .preview button,
-    :root[data-theme="dark"] .personal-note-image button { background: var(--accent); color: #101713; border-color: var(--accent); }
+    :root[data-theme="dark"] .personal-note-image button { background: var(--accent); color: #111; border-color: var(--accent); }
     :root[data-theme="dark"] .icon-btn,
-    :root[data-theme="dark"] .user-choice button { background: #202822; color: var(--ink); }
-    :root[data-theme="dark"] .note-area { background: #26291f; color: var(--ink); border-color: var(--line); box-shadow: none; }
-    :root[data-theme="dark"] .source-label { background: #29332c; color: #bdc8c0; }
+    :root[data-theme="dark"] .user-choice button { background: #202020; color: var(--ink); }
+    :root[data-theme="dark"] .note-area { background: #202020; color: var(--ink); border-color: var(--line); box-shadow: none; }
+    :root[data-theme="dark"] .source-label { background: #292929; color: #c4c4c4; }
     :root[data-theme="dark"] .security-note { background: #40371f; color: #f0d494; }
     :root[data-theme="dark"] .delete-project:hover { background: #482b2b; color: #ffb0aa; }
-    :root[data-theme="dark"] .pinned-stack { background: #403a2b; color: #f0d494; }
+    :root[data-theme="dark"] .pinned-stack { background: #303030; color: #e5e5e5; }
     :root[data-theme="dark"] .pinned-header,
-    :root[data-theme="dark"] .pinned-toggle { color: #f0d494; }
+    :root[data-theme="dark"] .pinned-toggle { color: #e5e5e5; }
     :root[data-theme="dark"] .personal-note-view { background: rgba(0,0,0,.12); }
-    :root[data-theme="dark"] .sync-indicator { background: rgba(28,35,30,.92); }
+    :root[data-theme="dark"] .sync-indicator { background: rgba(23,23,23,.94); }
     button, input, textarea, select { font: inherit; color: inherit; }
     button { cursor: pointer; }
     .hidden { display: none !important; }
