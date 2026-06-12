@@ -40,7 +40,7 @@
     .user-switch .dot { width: 7px; height: 7px; }
     .section-title { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; margin: 22px 8px 8px; }
     .nav-item, .project-item { width: 100%; border: 0; background: transparent; display: flex; gap: 10px; align-items: center; padding: 10px; border-radius: 11px; text-align: left; }
-    .nav-item:hover, .project-item:hover, .project-item.active { background: #edf0e9; }
+    .nav-item:hover, .nav-item.active, .project-item:hover, .project-item.active { background: #edf0e9; }
     .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
     .nav-item span:nth-child(2), .project-item span:nth-child(2) { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
     .count { color: var(--muted); font-size: 11px; }
@@ -69,6 +69,10 @@
     .personal-note-card h2 { margin: 0 0 5px; font-size: 18px; letter-spacing: -.04em; }
     .personal-note-card p { margin: 0 0 18px; color: var(--muted); font-size: 12px; }
     .personal-note-editor { width: 100%; min-height: calc(100vh - 245px); resize: none; border: 0; outline: 0; background: transparent; line-height: 1.8; font-size: 14px; }
+    .personal-note-images { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 9px; margin-bottom: 15px; }
+    .personal-note-image { position: relative; }
+    .personal-note-image img { width: 100%; height: 110px; object-fit: cover; border-radius: 10px; cursor: zoom-in; }
+    .personal-note-image button { position: absolute; top: 5px; right: 5px; width: 23px; height: 23px; border: 0; border-radius: 50%; background: rgba(20,26,22,.8); color: white; }
     .empty { max-width: 380px; margin: 80px auto; text-align: center; color: var(--muted); }
     .empty b { color: var(--ink); display: block; margin-bottom: 7px; }
     .entry { display: grid; grid-template-columns: 38px 1fr; gap: 10px; margin-bottom: 20px; }
@@ -163,10 +167,11 @@
     <aside class="panel sidebar">
       <div class="brand"><div class="brand-mark">&lt;/&gt;</div><div><strong>Devlog Duo</strong><small>Build, note, share.</small></div></div>
       <div class="user-switcher" id="userSwitcher"></div>
-      <div class="section-title">Personal folders</div>
-      <div id="personalFolders"></div>
+      <button class="nav-item" id="announcementButton" data-announcements><span>📌</span><span>공지사항</span><span class="count" id="announcementCount">0</span></button>
       <div class="section-title">Project folders</div>
       <div id="sidebarProjects"></div>
+      <div class="section-title">Personal folders</div>
+      <div id="personalFolders"></div>
       <div class="section-title">Views</div>
       <button class="nav-item" data-view="pinned"><span>★</span><span>Pinned updates</span><span class="count" id="pinnedCount">0</span></button>
       <button class="nav-item" data-view="all"><span>⌘</span><span>All activity</span><span class="count" id="allCount">0</span></button>
@@ -195,7 +200,8 @@
       <section class="personal-note-view hidden" id="personalNoteView">
         <div class="personal-note-card">
           <h2 id="personalNoteTitle">Personal note</h2>
-          <p>개인적인 생각, 아이디어, 할 일을 자유롭게 기록하세요. 자동 저장됩니다.</p>
+          <p>개인적인 생각과 아이디어를 기록하세요. 스크린샷은 Ctrl+V로 붙여넣을 수 있습니다.</p>
+          <div class="personal-note-images hidden" id="personalNoteImages"></div>
           <textarea class="personal-note-editor" id="personalNoteEditor" placeholder="생각나는 내용을 자유롭게 적으세요..."></textarea>
         </div>
       </section>
@@ -289,6 +295,8 @@
     }
     function renderSidebar() {
       $("#userSwitcher").innerHTML = Object.values(state.users).map(u => `<button class="user-switch ${state.activeUser === u.id ? "active" : ""}" style="--user-color:${u.color}" data-choose-user="${u.id}"><span class="dot" style="background:${u.color}"></span>${escapeHtml(u.name)}</button>`).join("");
+      $("#announcementButton").classList.toggle("active", state.activeView === "announcements");
+      $("#announcementCount").textContent = state.entries.filter(e => e.projectId === "__announcements__").length;
       $("#personalFolders").innerHTML = Object.values(state.users).map(u => {
         return `<button class="nav-item ${state.activeView === "personalNote" && state.noteUser === u.id ? "active" : ""}" data-personal-note="${u.id}"><span class="dot" style="background:${u.color}"></span><span>${escapeHtml(u.name)} 개인 노트</span></button>`;
       }).join("");
@@ -302,15 +310,15 @@
     function renderMobileBar() {
       const projectOptions = state.projects.map(p => `<option value="project:${p.id}" ${state.activeView === "project" && p.id === state.activeProject ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("");
       const noteOptions = Object.values(state.users).map(u => `<option value="note:${u.id}" ${state.activeView === "personalNote" && state.noteUser === u.id ? "selected" : ""}>${escapeHtml(u.name)} 개인 노트</option>`).join("");
-      $("#mobileProjectSelect").innerHTML = `<optgroup label="프로젝트">${projectOptions}</optgroup><optgroup label="개인 노트">${noteOptions}</optgroup>`;
+      $("#mobileProjectSelect").innerHTML = `<option value="announcements" ${state.activeView === "announcements" ? "selected" : ""}>📌 공지사항</option><optgroup label="프로젝트">${projectOptions}</optgroup><optgroup label="개인 노트">${noteOptions}</optgroup>`;
       $("#mobileUserSelect").innerHTML = Object.values(state.users).map(u => `<option value="${u.id}" ${u.id === state.activeUser ? "selected" : ""}>${escapeHtml(u.name)}</option>`).join("");
       $("#mobileUserSelect").style.color = activeUser().color;
     }
     function renderHeader() {
       const project = currentProject();
-      const labels = { project: project.name, all: "All activity", pinned: "Pinned updates", personalNote: `${state.users[state.noteUser]?.name || ""} 개인 노트` };
+      const labels = { project: project.name, announcements: "공지사항", all: "All activity", pinned: "Pinned updates", personalNote: `${state.users[state.noteUser]?.name || ""} 개인 노트` };
       $("#projectTitle").textContent = labels[state.activeView] || project.name;
-      $("#projectSubtitle").textContent = state.activeView === "personalNote" ? "Private thoughts and ideas" : state.activeView === "project" ? project.desc : "Filtered development journal";
+      $("#projectSubtitle").textContent = state.activeView === "announcements" ? "팀 전체가 확인할 중요한 소식" : state.activeView === "personalNote" ? "Private thoughts and ideas" : state.activeView === "project" ? project.desc : "Filtered development journal";
       $("#deleteCurrentProjectBtn").classList.toggle("hidden", state.activeView !== "project");
       $("#searchInput").closest(".search").classList.toggle("hidden", state.activeView === "personalNote");
       $("#filterRow").classList.toggle("hidden", state.activeView === "personalNote");
@@ -320,6 +328,7 @@
     function getVisibleEntries() {
       let list = [...state.entries];
       if (state.activeView === "project") list = list.filter(e => e.projectId === state.activeProject);
+      if (state.activeView === "announcements") list = list.filter(e => e.projectId === "__announcements__");
       if (state.activeView === "pinned") list = list.filter(e => e.pinned);
       if (activeFilter !== "All") list = list.filter(e => e.status === activeFilter);
       const q = $("#searchInput").value.trim().toLowerCase();
@@ -367,6 +376,9 @@
       const user = state.users[state.noteUser] || activeUser();
       $("#personalNoteTitle").textContent = `${user.name} 개인 노트`;
       $("#personalNoteEditor").value = user.personalNote || "";
+      const images = user.personalImages || [];
+      $("#personalNoteImages").innerHTML = images.map((src, i) => `<div class="personal-note-image"><img src="${src}" alt="개인 노트 이미지"><button data-delete-note-image="${i}">×</button></div>`).join("");
+      $("#personalNoteImages").classList.toggle("hidden", !images.length);
     }
     function renderRightbar() {
       $("#projectCount").textContent = `${state.projects.length} folders`;
@@ -396,9 +408,10 @@
     function postEntry() {
       const text = $("#messageInput").value.trim();
       if (!text && !pendingImages.length) return toast("내용 또는 사진을 추가해주세요");
-      const entry = { id: crypto.randomUUID(), projectId: state.activeProject, userId: state.activeUser, text, images: [...pendingImages], status: $("#statusInput").value, pinned: false, createdAt: Date.now() };
+      const targetView = state.activeView === "announcements" ? "announcements" : "project";
+      const entry = { id: crypto.randomUUID(), projectId: targetView === "announcements" ? "__announcements__" : state.activeProject, userId: state.activeUser, text, images: [...pendingImages], status: $("#statusInput").value, pinned: targetView === "announcements", createdAt: Date.now() };
       state.entries.push(entry);
-      state.activeView = "project";
+      state.activeView = targetView;
       activeFilter = "All";
       $("#searchInput").value = "";
       if (!saveState()) {
@@ -447,6 +460,16 @@
       }
       if (images.length) toast("사진을 첨부했습니다");
     }
+    async function addPersonalNoteImages(files) {
+      const images = [...files].filter(file => file && file.type.startsWith("image/"));
+      if (!images.length) return;
+      const user = state.users[state.noteUser] || activeUser();
+      user.personalImages ||= [];
+      for (const file of images) user.personalImages.push(await compressImage(file));
+      if (!saveState()) return;
+      renderPersonalNote();
+      toast("개인 노트에 사진을 추가했습니다");
+    }
     function openProjectModal() {
       $("#formModalContent").innerHTML = `<h2>새 공유 프로젝트</h2><p>프로젝트별로 개발일지를 나눠 관리할 수 있습니다.</p>
         <div class="form-group"><label>Project name</label><input id="newProjectName" placeholder="예: Mobile App v2"></div>
@@ -472,6 +495,7 @@
       const t = e.target.closest("button, img");
       if (!t) return;
       if (t.dataset.chooseUser) chooseUser(t.dataset.chooseUser);
+      if (t.dataset.announcements !== undefined) { state.activeView = "announcements"; saveState(); render(); }
       if (t.dataset.project) { state.activeProject = t.dataset.project; state.activeView = "project"; saveState(); render(); }
       if (t.dataset.deleteProject) deleteProject(t.dataset.deleteProject);
       if (t.dataset.personalNote) { state.noteUser = t.dataset.personalNote; state.activeView = "personalNote"; saveState(); render(); }
@@ -480,8 +504,13 @@
       if (t.dataset.pin) { const x = state.entries.find(x => x.id === t.dataset.pin); x.pinned = !x.pinned; saveState(); render(); }
       if (t.dataset.delete && confirm("이 기록을 삭제할까요?")) { state.entries = state.entries.filter(x => x.id !== t.dataset.delete); saveState(); render(); }
       if (t.dataset.deleteGroup && confirm("묶인 기록을 모두 삭제할까요?")) { const ids = t.dataset.deleteGroup.split(","); state.entries = state.entries.filter(x => !ids.includes(x.id)); saveState(); render(); }
+      if (t.dataset.deleteNoteImage !== undefined) {
+        const user = state.users[state.noteUser] || activeUser();
+        user.personalImages.splice(Number(t.dataset.deleteNoteImage), 1);
+        saveState(); renderPersonalNote();
+      }
       if (t.dataset.closeModal !== undefined || t.id === "formModal") $("#formModal").classList.add("hidden");
-      if (t.matches(".bubble img")) { $("#lightbox img").src = t.src; $("#lightbox").classList.remove("hidden"); }
+      if (t.matches(".bubble img, .personal-note-image img")) { $("#lightbox img").src = t.src; $("#lightbox").classList.remove("hidden"); }
     });
     $("#sendBtn").onclick = postEntry;
     $("#messageInput").addEventListener("keydown", e => {
@@ -492,7 +521,8 @@
     $("#searchInput").addEventListener("input", renderFeed);
     $("#mobileProjectSelect").addEventListener("change", e => {
       const [type, id] = e.target.value.split(":");
-      if (type === "note") { state.noteUser = id; state.activeView = "personalNote"; }
+      if (type === "announcements") state.activeView = "announcements";
+      else if (type === "note") { state.noteUser = id; state.activeView = "personalNote"; }
       else { state.activeProject = id; state.activeView = "project"; }
       saveState(); render();
     });
@@ -518,6 +548,12 @@
         user.personalNote = e.target.value;
         saveState();
       }, 350);
+    });
+    $("#personalNoteEditor").addEventListener("paste", e => {
+      const images = [...e.clipboardData.items].filter(item => item.type.startsWith("image/")).map(item => item.getAsFile()).filter(Boolean);
+      if (!images.length) return;
+      e.preventDefault();
+      addPersonalNoteImages(images);
     });
     function syncMobileViewport() {
       const viewport = window.visualViewport;
