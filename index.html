@@ -75,7 +75,10 @@
     .personal-note-image button { position: absolute; top: 5px; right: 5px; width: 23px; height: 23px; border: 0; border-radius: 50%; background: rgba(20,26,22,.8); color: white; }
     .empty { max-width: 380px; margin: 80px auto; text-align: center; color: var(--muted); }
     .empty b { color: var(--ink); display: block; margin-bottom: 7px; }
-    .entry { display: grid; grid-template-columns: 38px 1fr; gap: 10px; margin-bottom: 13px; }
+    .entry { display: grid; grid-template-columns: 38px 1fr; gap: 10px; margin-bottom: 8px; }
+    .pinned-stack { position: sticky; top: -20px; z-index: 5; padding: 20px 0 3px; margin-top: -20px; background: linear-gradient(var(--bg) 82%, transparent); }
+    .pinned-stack:empty { display: none; }
+    .pinned-stack .entry { margin-bottom: 6px; }
     .entry-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; }
     .entry-name { font-weight: 800; font-size: 13px; }
     .source-label { padding: 2px 6px; border-radius: 6px; background: #edf0e9; color: var(--muted); font-size: 9px; font-weight: 800; }
@@ -149,7 +152,8 @@
       .personal-note-view { padding: 10px; }
       .personal-note-card { padding: 15px; border-radius: 12px; }
       .personal-note-editor { min-height: calc(var(--app-height) - 155px); }
-      .entry { grid-template-columns: 27px minmax(0, 1fr); gap: 8px; margin-bottom: 10px; }
+      .entry { grid-template-columns: 27px minmax(0, 1fr); gap: 8px; margin-bottom: 6px; }
+      .pinned-stack { top: -14px; padding-top: 14px; margin-top: -14px; }
       .entry .avatar { width: 27px; height: 27px; font-size: 9px; }
       .entry-head { margin-bottom: 4px; } .entry-time { font-size: 9px; } .entry-actions { display: none; }
       .bubble { padding: 10px 11px; border-radius: 4px 13px 13px 13px; font-size: 13px; }
@@ -435,7 +439,7 @@
       if (!entries.length) { $("#feed").innerHTML = `<div class="empty"><b>아직 기록이 없습니다.</b>첫 개발 업데이트를 남겨보세요. 짧아도 충분합니다.</div>`; return; }
       const grouped = entries.reduce((groups, entry) => {
         const previous = groups[groups.length - 1];
-        if (previous && previous.userId === entry.userId && previous.projectId === entry.projectId && entry.createdAt - previous.createdAt <= 60000) {
+        if (previous && !previous.pinned && !entry.pinned && previous.userId === entry.userId && previous.projectId === entry.projectId && entry.createdAt - previous.createdAt <= 60000) {
           previous.items.push(entry);
           previous.text = previous.items.map(item => item.text).filter(Boolean).join("\n");
           previous.images = previous.items.flatMap(item => [...(item.images || []), ...(item.image ? [item.image] : [])]);
@@ -446,7 +450,7 @@
         groups.push({ ...entry, items: [entry], images: [...(entry.images || []), ...(entry.image ? [entry.image] : [])], lastId: entry.id });
         return groups;
       }, []);
-      $("#feed").innerHTML = grouped.map(e => {
+      const renderEntry = e => {
         const u = state.users[e.userId] || { name: "Unknown", color: "#777" };
         const source = e.projectId === "__announcements__" ? "공동 노트" : state.projects.find(p => p.id === e.projectId)?.name || "Unknown project";
         return `<article class="entry" style="--writer-color:${u.color}">
@@ -455,11 +459,14 @@
             ${state.settings.showNames ? `<span class="entry-name" style="color:${u.color}">${escapeHtml(u.name)}</span>` : ""}
             ${state.activeView === "today" ? `<span class="source-label">${escapeHtml(source)}</span>` : ""}
             <span class="entry-time">${formatTime(e.createdAt)}</span>${e.pinned ? `<span class="pin">★ pinned</span>` : ""}
-            <span class="entry-actions"><button data-pin="${e.lastId}">${e.pinned ? "Unpin" : "Pin"}</button><button data-delete-group="${e.items.map(item => item.id).join(",")}">Delete</button></span>
+            <span class="entry-actions"><button data-pin-group="${e.items.map(item => item.id).join(",")}">${e.pinned ? "Unpin" : "Pin"}</button><button data-delete-group="${e.items.map(item => item.id).join(",")}">Delete</button></span>
           </div><div class="bubble">${escapeHtml(e.text)}${e.images.map(src => `<img src="${src}" alt="Attached image">`).join("")}</div>
           </div>
         </article>`;
-      }).join("");
+      };
+      const pinned = grouped.filter(e => e.pinned);
+      const regular = grouped.filter(e => !e.pinned);
+      $("#feed").innerHTML = `<div class="pinned-stack">${pinned.map(renderEntry).join("")}</div>${regular.map(renderEntry).join("")}`;
       $("#feed").scrollTop = $("#feed").scrollHeight;
     }
     function renderPersonalNote() {
@@ -627,7 +634,14 @@
       if (t.dataset.deleteProject) deleteProject(t.dataset.deleteProject);
       if (t.dataset.personalNote) { state.noteUser = t.dataset.personalNote; state.activeView = "personalNote"; saveState(); render(); }
       if (t.dataset.view) { state.activeView = t.dataset.view; render(); }
-      if (t.dataset.pin) { const x = state.entries.find(x => x.id === t.dataset.pin); x.pinned = !x.pinned; saveState(true); render(); }
+      if (t.dataset.pinGroup) {
+        const ids = t.dataset.pinGroup.split(",");
+        const selected = state.entries.filter(x => ids.includes(x.id));
+        const shouldPin = !selected.every(x => x.pinned);
+        selected.forEach(x => x.pinned = shouldPin);
+        saveState(true); render();
+        if (shouldPin) $("#feed").scrollTop = 0;
+      }
       if (t.dataset.delete && confirm("이 기록을 삭제할까요?")) { state.entries = state.entries.filter(x => x.id !== t.dataset.delete); saveState(true); render(); }
       if (t.dataset.deleteGroup && confirm("묶인 기록을 모두 삭제할까요?")) { const ids = t.dataset.deleteGroup.split(","); state.entries = state.entries.filter(x => !ids.includes(x.id)); saveState(true); render(); }
       if (t.dataset.deleteNoteImage !== undefined) {
