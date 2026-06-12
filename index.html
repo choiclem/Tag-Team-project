@@ -98,6 +98,7 @@
     .compose-tools select { border: 1px solid var(--line); border-radius: 8px; background: white; padding: 7px 8px; font-size: 11px; min-width: 0; }
     .send { margin-left: auto; border: 0; background: var(--ink); color: white; border-radius: 9px; padding: 8px 14px; font-weight: 700; font-size: 12px; }
     .rightbar h2 { font-size: 15px; margin: 0; letter-spacing: -.03em; }
+    .rightbar { position: relative; padding-bottom: 58px; }
     .right-section { margin-bottom: 24px; }
     .right-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     .note-area { width: 100%; min-height: 160px; resize: vertical; border: 1px solid #d9d8cc; background: #fffdf3; border-radius: 13px; padding: 13px; line-height: 1.6; outline: none; box-shadow: inset 0 -20px 0 rgba(246,232,167,.08); }
@@ -112,7 +113,8 @@
     .shared-project strong { display: block; font-size: 12px; }
     .shared-project small { display: block; font-size: 10px; color: var(--muted); margin-top: 2px; }
     .add-project { width: 100%; border: 1px dashed #b9beb8; background: transparent; color: var(--muted); padding: 9px; border-radius: 10px; }
-    .tip { padding: 12px; border-radius: 12px; background: #edf0e9; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .sync-indicator { position: absolute; right: 14px; bottom: 14px; display: flex; align-items: center; gap: 6px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,.85); color: var(--muted); font-size: 9px; }
+    .sync-indicator::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #56a373; }
     .modal-wrap { position: fixed; inset: 0; background: rgba(20,26,22,.48); display: grid; place-items: center; padding: 18px; z-index: 20; backdrop-filter: blur(7px); }
     .modal { width: min(450px, 100%); background: #fbfcf8; border-radius: 20px; padding: 22px; box-shadow: 0 30px 80px rgba(0,0,0,.25); }
     .modal h2 { margin: 0 0 5px; letter-spacing: -.04em; }
@@ -223,10 +225,7 @@
         <div id="sharedProjects"></div>
         <button class="add-project" id="addProjectBtn">＋ Add project folder</button>
       </section>
-      <section class="right-section">
-        <div class="right-head"><h2>온라인 동기화</h2><span class="count" id="syncStatus">연결 확인 중</span></div>
-      </section>
-      <div class="tip"><b>Supabase 실시간 공유</b><br>연결되면 Clem과 Ryan의 모바일·PC에서 같은 기록을 자동으로 공유합니다.</div>
+      <div class="sync-indicator" id="syncStatus" title="Supabase 실시간 공유 · Clem과 Ryan의 모바일·PC에서 기록을 자동 공유합니다.">연결 확인 중</div>
     </aside>
   </div>
 
