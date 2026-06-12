@@ -70,9 +70,9 @@
     :root[data-theme="dark"] .source-label { background: #292929; color: #c4c4c4; }
     :root[data-theme="dark"] .security-note { background: #40371f; color: #f0d494; }
     :root[data-theme="dark"] .delete-project:hover { background: #482b2b; color: #ffb0aa; }
-    :root[data-theme="dark"] .pinned-stack { background: #303030; color: #e5e5e5; }
-    :root[data-theme="dark"] .pinned-header,
-    :root[data-theme="dark"] .pinned-toggle { color: #e5e5e5; }
+    :root[data-theme="dark"] .pinned-stack { background: #253047; color: #e3ebff; }
+    :root[data-theme="dark"] .pinned-header { color: #e3ebff; }
+    :root[data-theme="dark"] .pinned-header:hover { background: #303d58; }
     :root[data-theme="dark"] .personal-note-view { background: rgba(0,0,0,.12); }
     :root[data-theme="dark"] .sync-indicator { background: rgba(23,23,23,.94); }
     button, input, textarea, select { font: inherit; color: inherit; }
@@ -126,13 +126,14 @@
     .empty { max-width: 380px; margin: 80px auto; text-align: center; color: var(--muted); }
     .empty b { color: var(--ink); display: block; margin-bottom: 7px; }
     .entry { display: grid; grid-template-columns: 38px 1fr; gap: 10px; margin-bottom: 8px; }
-    .pinned-stack { position: sticky; top: -20px; z-index: 5; padding: 20px 8px 7px; margin: -20px -8px 4px; background: #ded8c3; color: #5f4a24; }
+    .pinned-stack { position: sticky; top: -20px; z-index: 5; padding: 20px 8px 7px; margin: -20px -8px 4px; background: #dbe6f5; color: #294364; }
     .pinned-stack:empty { display: none; }
     .pinned-stack .entry { margin-bottom: 6px; }
-    .pinned-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; color: inherit; font-size: 13px; font-weight: 900; }
-    .pinned-toggle { border: 0; background: transparent; color: inherit; font-size: 12px; font-weight: 800; padding: 0; }
+    .pinned-header { width: 100%; display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; padding: 3px 5px; border: 0; background: transparent; color: inherit; font-size: 13px; font-weight: 900; text-align: left; }
+    .pinned-header:hover { background: #cbd9ed; }
+    .pinned-state { font-size: 11px; font-weight: 700; opacity: .8; }
     .pinned-stack.collapsed { top: 0; padding: 3px 8px; margin: 0 -8px 4px; }
-    .pinned-stack.collapsed .pinned-header { margin: 0; }
+    .pinned-stack.collapsed .pinned-header { margin: 0; padding-block: 1px; }
     .entry-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; }
     .entry-name { font-weight: 800; font-size: 13px; }
     .source-label { padding: 2px 6px; border-radius: 6px; background: #edf0e9; color: var(--muted); font-size: 9px; font-weight: 800; }
@@ -535,7 +536,7 @@
       const pinned = grouped.filter(e => e.pinned);
       const regular = grouped.filter(e => !e.pinned);
       const pinnedContent = pinnedCollapsed ? "" : pinned.map(renderEntry).join("");
-      $("#feed").innerHTML = `<div class="pinned-stack ${pinnedCollapsed ? "collapsed" : ""}">${pinned.length ? `<div class="pinned-header"><span>★ Pinned ${pinned.length}</span><button class="pinned-toggle" data-toggle-pinned>${pinnedCollapsed ? "펼치기" : "접기"}</button></div>${pinnedContent}` : ""}</div>${regular.map(renderEntry).join("")}`;
+      $("#feed").innerHTML = `<div class="pinned-stack ${pinnedCollapsed ? "collapsed" : ""}">${pinned.length ? `<button class="pinned-header" data-toggle-pinned><span>★ Pinned ${pinned.length}</span><span class="pinned-state">${pinnedCollapsed ? "펼치기" : "접기"}</span></button>${pinnedContent}` : ""}</div>${regular.map(renderEntry).join("")}`;
       $("#feed").scrollTop = $("#feed").scrollHeight;
     }
     function renderPersonalNote() {
@@ -723,7 +724,7 @@
         saveState(true); render();
         if (shouldPin) $("#feed").scrollTop = 0;
       }
-      if (t.dataset.togglePinned !== undefined) {
+      if (t.closest("[data-toggle-pinned]")) {
         pinnedCollapsed = !pinnedCollapsed;
         localStorage.setItem("devlog-duo-pinned-collapsed", String(pinnedCollapsed));
         renderFeed();
