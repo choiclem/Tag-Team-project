@@ -223,11 +223,9 @@
         <button class="add-project" id="addProjectBtn">＋ Add project folder</button>
       </section>
       <section class="right-section">
-        <div class="right-head"><h2>데이터 백업</h2></div>
-        <div class="sync-actions"><button class="btn" id="exportBtn">백업 저장</button><button class="btn" id="importBtn">백업 불러오기</button></div>
-        <input class="hidden" type="file" accept=".json,application/json" id="importInput">
+        <div class="right-head"><h2>온라인 동기화</h2><span class="count" id="syncStatus">연결 확인 중</span></div>
       </section>
-      <div class="tip"><b>백업 기능 안내</b><br>기록을 JSON 파일로 저장하거나 복원하는 기능입니다. GitHub와 자동으로 동기화되지는 않습니다.</div>
+      <div class="tip"><b>Supabase 실시간 공유</b><br>연결되면 Clem과 Ryan의 모바일·PC에서 같은 기록을 자동으로 공유합니다.</div>
     </aside>
   </div>
 
@@ -238,8 +236,14 @@
   <div class="toast hidden" id="toast"></div>
   <div class="lightbox hidden" id="lightbox"><img alt="Attached preview"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
   <script>
     const STORE_KEY = "devlog-duo-v1";
+    const REMOTE_ROW_ID = "shared";
+    let supabaseClient = null;
+    let remoteSaveTimer = null;
+    let applyingRemoteState = false;
     const seed = {
       users: {
         clem: { id: "clem", name: "Clem", color: "#2f7d5b", note: "- 오늘 확인할 PR\\n- API 에러 로그 정리" },
@@ -283,14 +287,85 @@
         return merged;
       } catch { return structuredClone(seed); }
     }
-    function saveState() {
+    function saveState(syncRemote = false) {
       try {
         localStorage.setItem(STORE_KEY, JSON.stringify(state));
+        if (syncRemote && !applyingRemoteState) scheduleRemoteSave();
         return true;
       } catch {
         toast("저장 공간이 부족합니다. 오래된 사진 기록을 삭제해주세요");
         return false;
       }
+    }
+    function sharedSnapshot() {
+      return {
+        users: state.users,
+        projects: state.projects,
+        entries: state.entries,
+        settings: state.settings,
+        dataVersion: state.dataVersion
+      };
+    }
+    function applySharedState(shared) {
+      if (!shared) return;
+      applyingRemoteState = true;
+      state = {
+        ...state,
+        users: shared.users || state.users,
+        projects: shared.projects || state.projects,
+        entries: shared.entries || [],
+        settings: { ...state.settings, ...(shared.settings || {}) },
+        dataVersion: shared.dataVersion || state.dataVersion
+      };
+      if (!state.projects.some(p => p.id === state.activeProject)) state.activeProject = state.projects[0]?.id;
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+      applyingRemoteState = false;
+      render();
+    }
+    function setSyncStatus(text) {
+      const status = $("#syncStatus");
+      if (status) status.textContent = text;
+    }
+    function scheduleRemoteSave() {
+      if (!supabaseClient) return;
+      clearTimeout(remoteSaveTimer);
+      setSyncStatus("저장 중");
+      remoteSaveTimer = setTimeout(syncToSupabase, 300);
+    }
+    async function syncToSupabase() {
+      if (!supabaseClient) return;
+      const { error } = await supabaseClient.from("app_state").upsert({
+        id: REMOTE_ROW_ID,
+        data: sharedSnapshot(),
+        updated_at: new Date().toISOString()
+      });
+      setSyncStatus(error ? "동기화 오류" : "동기화됨");
+      if (error) console.error("Supabase sync failed", error);
+    }
+    async function initializeSupabase() {
+      const config = window.DEVLOG_SUPABASE || {};
+      if (!config.url || !config.anonKey || !window.supabase?.createClient) {
+        setSyncStatus("설정 필요");
+        return;
+      }
+      supabaseClient = window.supabase.createClient(config.url, config.anonKey);
+      setSyncStatus("연결 중");
+      const { data, error } = await supabaseClient.from("app_state").select("data").eq("id", REMOTE_ROW_ID).maybeSingle();
+      if (error) {
+        setSyncStatus("연결 오류");
+        console.error("Supabase load failed", error);
+        return;
+      }
+      if (data?.data) applySharedState(data.data);
+      else await syncToSupabase();
+      supabaseClient.channel("devlog-duo-state")
+        .on("postgres_changes", { event: "*", schema: "public", table: "app_state", filter: `id=eq.${REMOTE_ROW_ID}` }, payload => {
+          if (payload.new?.data) applySharedState(payload.new.data);
+          setSyncStatus("동기화됨");
+        })
+        .subscribe(status => {
+          if (status === "SUBSCRIBED") setSyncStatus("실시간 연결됨");
+        });
     }
     function toast(msg) { const el = $("#toast"); el.textContent = msg; el.classList.remove("hidden"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.add("hidden"), 1800); }
     function initials(name) { return name.trim().split(/\s+/).map(x => x[0]).join("").slice(0,2).toUpperCase(); }
@@ -411,7 +486,7 @@
       state.entries = state.entries.filter(e => e.projectId !== id);
       if (state.activeProject === id) state.activeProject = state.projects[0].id;
       state.activeView = "project";
-      saveState(); render(); toast("프로젝트를 삭제했습니다");
+      saveState(true); render(); toast("프로젝트를 삭제했습니다");
     }
     function renderUserChoices() {
       $("#userChoices").innerHTML = Object.values(state.users).map(u => `<button data-choose-user="${u.id}"><span class="avatar" style="background:${u.color}">${initials(u.name)}</span><strong>${escapeHtml(u.name)}</strong></button>`).join("");
@@ -426,7 +501,7 @@
       state.activeView = targetView;
       activeFilter = "All";
       $("#searchInput").value = "";
-      if (!saveState()) {
+      if (!saveState(true)) {
         state.entries = state.entries.filter(e => e.id !== entry.id);
         return;
       }
@@ -478,7 +553,7 @@
       const user = state.users[state.noteUser] || activeUser();
       user.personalImages ||= [];
       for (const file of images) user.personalImages.push(await compressImage(file));
-      if (!saveState()) return;
+      if (!saveState(true)) return;
       renderPersonalNote();
       toast("개인 노트에 사진을 추가했습니다");
     }
@@ -498,11 +573,6 @@
         <div class="form-actions"><button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="saveSettingsBtn">Save settings</button></div>`;
       $("#formModal").classList.remove("hidden");
     }
-    function exportData() {
-      const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `devlog-duo-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href);
-    }
-
     document.addEventListener("click", e => {
       const t = e.target.closest("button, img");
       if (!t) return;
@@ -513,13 +583,13 @@
       if (t.dataset.personalNote) { state.noteUser = t.dataset.personalNote; state.activeView = "personalNote"; saveState(); render(); }
       if (t.dataset.view) { state.activeView = t.dataset.view; render(); }
       if (t.dataset.filter) { activeFilter = t.dataset.filter; renderHeader(); renderFeed(); }
-      if (t.dataset.pin) { const x = state.entries.find(x => x.id === t.dataset.pin); x.pinned = !x.pinned; saveState(); render(); }
-      if (t.dataset.delete && confirm("이 기록을 삭제할까요?")) { state.entries = state.entries.filter(x => x.id !== t.dataset.delete); saveState(); render(); }
-      if (t.dataset.deleteGroup && confirm("묶인 기록을 모두 삭제할까요?")) { const ids = t.dataset.deleteGroup.split(","); state.entries = state.entries.filter(x => !ids.includes(x.id)); saveState(); render(); }
+      if (t.dataset.pin) { const x = state.entries.find(x => x.id === t.dataset.pin); x.pinned = !x.pinned; saveState(true); render(); }
+      if (t.dataset.delete && confirm("이 기록을 삭제할까요?")) { state.entries = state.entries.filter(x => x.id !== t.dataset.delete); saveState(true); render(); }
+      if (t.dataset.deleteGroup && confirm("묶인 기록을 모두 삭제할까요?")) { const ids = t.dataset.deleteGroup.split(","); state.entries = state.entries.filter(x => !ids.includes(x.id)); saveState(true); render(); }
       if (t.dataset.deleteNoteImage !== undefined) {
         const user = state.users[state.noteUser] || activeUser();
         user.personalImages.splice(Number(t.dataset.deleteNoteImage), 1);
-        saveState(); renderPersonalNote();
+        saveState(true); renderPersonalNote();
       }
       if (t.dataset.closeModal !== undefined || t.id === "formModal") $("#formModal").classList.add("hidden");
       if (t.matches(".bubble img, .personal-note-image img")) { $("#lightbox img").src = t.src; $("#lightbox").classList.remove("hidden"); }
@@ -558,7 +628,7 @@
       window.personalNoteTimer = setTimeout(() => {
         const user = state.users[state.noteUser] || activeUser();
         user.personalNote = e.target.value;
-        saveState();
+        saveState(true);
       }, 350);
     });
     $("#personalNoteEditor").addEventListener("paste", e => {
@@ -579,25 +649,21 @@
     $("#settingsBtn").onclick = openSettings;
     $("#deleteCurrentProjectBtn").onclick = () => deleteProject(state.activeProject);
     $("#addProjectBtn").onclick = openProjectModal;
-    $("#exportBtn").onclick = exportData;
-    $("#importBtn").onclick = () => $("#importInput").click();
-    $("#importInput").onchange = e => {
-      const r = new FileReader(); r.onload = () => { try { state = JSON.parse(r.result); saveState(); render(); toast("백업을 불러왔습니다"); } catch { toast("올바른 JSON 파일이 아닙니다"); } }; r.readAsText(e.target.files[0]);
-    };
     $("#formModal").addEventListener("click", e => {
       if (e.target.id === "createProjectBtn") {
         const name = $("#newProjectName").value.trim(); if (!name) return toast("프로젝트 이름을 입력해주세요");
-        const id = crypto.randomUUID(); state.projects.push({ id, name, desc: $("#newProjectDesc").value.trim() || "Shared project", color: $("#newProjectColor").value }); state.activeProject = id; state.activeView = "project"; saveState(); $("#formModal").classList.add("hidden"); render();
+        const id = crypto.randomUUID(); state.projects.push({ id, name, desc: $("#newProjectDesc").value.trim() || "Shared project", color: $("#newProjectColor").value }); state.activeProject = id; state.activeView = "project"; saveState(true); $("#formModal").classList.add("hidden"); render();
       }
       if (e.target.id === "saveSettingsBtn") {
         $$("[data-name-setting]").forEach(x => state.users[x.dataset.nameSetting].name = x.value.trim() || state.users[x.dataset.nameSetting].name);
         $$("[data-color-setting]").forEach(x => state.users[x.dataset.colorSetting].color = x.value);
-        state.settings.showNames = $("#showNamesSetting").checked; saveState(); $("#formModal").classList.add("hidden"); render(); toast("설정을 저장했습니다");
+        state.settings.showNames = $("#showNamesSetting").checked; saveState(true); $("#formModal").classList.add("hidden"); render(); toast("설정을 저장했습니다");
       }
     });
     $("#lightbox").onclick = () => $("#lightbox").classList.add("hidden");
     render();
     if (!state.activeUser) $("#userModal").classList.remove("hidden");
+    initializeSupabase();
   </script>
 </body>
 </html>
