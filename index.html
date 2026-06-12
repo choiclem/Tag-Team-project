@@ -124,7 +124,6 @@
     .form-group label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; }
     .form-group input, .form-group textarea, .form-group select { width: 100%; border: 1px solid var(--line); background: white; padding: 9px; border-radius: 9px; }
     .form-group textarea { min-height: 95px; resize: vertical; }
-    .password-row { display: grid; grid-template-columns: 1fr auto; gap: 7px; }
     .security-note { padding: 9px 10px; border-radius: 9px; background: #fff0d7; color: #7d591e; font-size: 10px; line-height: 1.5; }
     .form-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 17px; }
     .btn { border: 1px solid var(--line); background: white; padding: 8px 12px; border-radius: 9px; }
@@ -568,17 +567,47 @@
         <div class="form-actions"><button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="createProjectBtn">Create folder</button></div>`;
       $("#formModal").classList.remove("hidden");
     }
-    function openProjectDetail() {
+    function bytesToBase64(bytes) {
+      return btoa(String.fromCharCode(...bytes));
+    }
+    function base64ToBytes(value) {
+      return Uint8Array.from(atob(value), char => char.charCodeAt(0));
+    }
+    async function deriveNoteKey(password, salt) {
+      const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+      return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: 150000, hash: "SHA-256" }, material, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+    }
+    async function encryptProjectNote(text, password) {
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const key = await deriveNoteKey(password, salt);
+      const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(text));
+      return { salt: bytesToBase64(salt), iv: bytesToBase64(iv), data: bytesToBase64(new Uint8Array(encrypted)) };
+    }
+    async function decryptProjectNote(payload, password) {
+      const salt = base64ToBytes(payload.salt);
+      const iv = base64ToBytes(payload.iv);
+      const key = await deriveNoteKey(password, salt);
+      const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, base64ToBytes(payload.data));
+      return new TextDecoder().decode(decrypted);
+    }
+    async function openProjectDetail() {
       if (state.activeView !== "project") return;
+      const password = prompt("프로젝트 노트 비밀번호 1234를 입력하세요");
+      if (password !== "1234") return toast("비밀번호가 맞지 않습니다");
       const project = currentProject();
-      const details = project.details || {};
-      $("#formModalContent").innerHTML = `<h2>${escapeHtml(project.name)} Detail</h2><p>프로젝트 링크, 데이터베이스 정보와 메모를 공동으로 관리합니다.</p>
-        <div class="form-group"><label>Project link</label><input id="detailLink" type="url" value="${escapeHtml(details.link || "")}" placeholder="https://..."></div>
-        <div class="form-group"><label>Database / connection data</label><textarea id="detailDatabase" placeholder="DB host, database name, username 등">${escapeHtml(details.database || "")}</textarea></div>
-        <div class="form-group"><label>Database password</label><div class="password-row"><input id="detailPassword" type="password" value="${escapeHtml(details.password || "")}"><button class="btn" id="toggleDetailPassword" type="button">Show</button></div></div>
-        <div class="form-group"><label>Notes</label><textarea id="detailNotes" placeholder="배포 정보, 중요한 링크, 참고사항 등">${escapeHtml(details.notes || "")}</textarea></div>
-        <div class="security-note">이 정보는 Supabase 공유 데이터에 저장되어 Clem과 Ryan에게 공유됩니다. 민감한 운영 비밀번호의 장기 보관에는 전용 비밀번호 관리자를 권장합니다.</div>
-        <div class="form-actions"><button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="saveProjectDetailBtn">Save detail</button></div>`;
+      let note = "";
+      try {
+        if (project.encryptedNote) note = await decryptProjectNote(project.encryptedNote, password);
+        else if (project.details) note = [project.details.link, project.details.database, project.details.password, project.details.notes].filter(Boolean).join("\n\n");
+      } catch {
+        return toast("노트를 복호화하지 못했습니다");
+      }
+      $("#formModalContent").innerHTML = `<h2>${escapeHtml(project.name)} Note</h2><p>비밀번호 1234로 암호화된 프로젝트 공동 노트입니다.</p>
+        <div class="form-group"><textarea id="encryptedProjectNote" placeholder="링크, DB 정보, 참고사항 등을 자유롭게 적으세요...">${escapeHtml(note)}</textarea></div>
+        <div class="security-note">노트 내용은 브라우저에서 암호화된 후 Supabase에 저장됩니다.</div>
+        <div class="form-actions"><button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="saveProjectDetailBtn">Save note</button></div>`;
+      $("#formModalContent").dataset.notePassword = password;
       $("#formModal").classList.remove("hidden");
     }
     function openSettings() {
@@ -665,25 +694,17 @@
     $("#settingsBtn").onclick = openSettings;
     $("#addProjectBtn").onclick = openProjectModal;
     $("#projectTitle").onclick = openProjectDetail;
-    $("#formModal").addEventListener("click", e => {
-      if (e.target.id === "toggleDetailPassword") {
-        const input = $("#detailPassword");
-        input.type = input.type === "password" ? "text" : "password";
-        e.target.textContent = input.type === "password" ? "Show" : "Hide";
-      }
+    $("#formModal").addEventListener("click", async e => {
       if (e.target.id === "createProjectBtn") {
         const name = $("#newProjectName").value.trim(); if (!name) return toast("프로젝트 이름을 입력해주세요");
         const id = crypto.randomUUID(); state.projects.push({ id, name, desc: $("#newProjectDesc").value.trim() || "Shared project", color: $("#newProjectColor").value }); state.activeProject = id; state.activeView = "project"; saveState(true); $("#formModal").classList.add("hidden"); render();
       }
       if (e.target.id === "saveProjectDetailBtn") {
         const project = currentProject();
-        project.details = {
-          link: $("#detailLink").value.trim(),
-          database: $("#detailDatabase").value.trim(),
-          password: $("#detailPassword").value,
-          notes: $("#detailNotes").value.trim()
-        };
-        saveState(true); $("#formModal").classList.add("hidden"); render(); toast("프로젝트 상세정보를 저장했습니다");
+        const password = $("#formModalContent").dataset.notePassword;
+        project.encryptedNote = await encryptProjectNote($("#encryptedProjectNote").value, password);
+        delete project.details;
+        saveState(true); $("#formModal").classList.add("hidden"); render(); toast("암호화 노트를 저장했습니다");
       }
       if (e.target.id === "saveSettingsBtn") {
         $$("[data-name-setting]").forEach(x => state.users[x.dataset.nameSetting].name = x.value.trim() || state.users[x.dataset.nameSetting].name);
