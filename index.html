@@ -59,8 +59,8 @@
     .project-heading h1 { font-size: 21px; margin: 0 0 3px; letter-spacing: -.04em; }
     .project-heading p { margin: 0; color: var(--muted); font-size: 12px; }
     .search { position: relative; width: 150px; flex: 0 0 auto; }
-    .search input { width: 100%; padding: 7px 10px 7px 31px; border: 1px solid var(--line); background: rgba(255,255,255,.7); border-radius: 9px; outline: none; font-size: 11px; }
-    .search span { position: absolute; left: 13px; top: 9px; color: var(--muted); }
+    .search input { width: 100%; padding: 7px 10px 7px 35px; border: 1px solid var(--line); background: rgba(255,255,255,.7); border-radius: 9px; outline: none; font-size: 11px; }
+    .search span { position: absolute; left: 11px; top: 3px; color: var(--muted); font-size: 22px; line-height: 28px; font-weight: 700; pointer-events: none; }
     .filter-row { display: flex; gap: 6px; margin-top: 10px; overflow-x: auto; }
     .chip { border: 1px solid var(--line); background: white; border-radius: 999px; padding: 5px 10px; color: var(--muted); font-size: 11px; white-space: nowrap; }
     .chip.active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
@@ -193,7 +193,6 @@
         <div class="topline">
           <div class="project-heading"><h1 id="projectTitle">Loading...</h1><p id="projectSubtitle">Shared development journal</p></div>
           <div class="search"><span>⌕</span><input id="searchInput" placeholder="Search"></div>
-          <button class="icon-btn" id="deleteCurrentProjectBtn" title="현재 프로젝트 삭제">×</button>
         </div>
         <div class="filter-row" id="filterRow"></div>
       </header>
@@ -416,7 +415,6 @@
       const labels = { project: project.name, announcements: "공지사항", today: "Today updates", all: "All activity", pinned: "Pinned updates", personalNote: `${state.users[state.noteUser]?.name || ""} 개인 노트` };
       $("#projectTitle").textContent = labels[state.activeView] || project.name;
       $("#projectSubtitle").textContent = state.activeView === "announcements" ? "팀 전체가 확인할 중요한 소식" : state.activeView === "personalNote" ? "Private thoughts and ideas" : state.activeView === "project" ? project.desc : "Filtered development journal";
-      $("#deleteCurrentProjectBtn").classList.toggle("hidden", state.activeView !== "project");
       $("#searchInput").closest(".search").classList.toggle("hidden", state.activeView === "personalNote");
       $("#filterRow").classList.toggle("hidden", state.activeView === "personalNote");
       const filters = ["All", "Progress", "Done", "Blocked", "Idea", "Bug"];
@@ -659,7 +657,6 @@
       window.visualViewport.addEventListener("resize", syncMobileViewport);
     }
     $("#settingsBtn").onclick = openSettings;
-    $("#deleteCurrentProjectBtn").onclick = () => deleteProject(state.activeProject);
     $("#addProjectBtn").onclick = openProjectModal;
     $("#formModal").addEventListener("click", e => {
       if (e.target.id === "createProjectBtn") {
