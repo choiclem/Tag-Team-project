@@ -173,6 +173,7 @@
       <div class="section-title">Personal folders</div>
       <div id="personalFolders"></div>
       <div class="section-title">Views</div>
+      <button class="nav-item" data-view="today"><span>◷</span><span>Today updates</span><span class="count" id="todayCount">0</span></button>
       <button class="nav-item" data-view="pinned"><span>★</span><span>Pinned updates</span><span class="count" id="pinnedCount">0</span></button>
       <button class="nav-item" data-view="all"><span>⌘</span><span>All activity</span><span class="count" id="allCount">0</span></button>
       <div class="user-card">
@@ -370,6 +371,13 @@
     function toast(msg) { const el = $("#toast"); el.textContent = msg; el.classList.remove("hidden"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.add("hidden"), 1800); }
     function initials(name) { return name.trim().split(/\s+/).map(x => x[0]).join("").slice(0,2).toUpperCase(); }
     function formatTime(ts) { return new Intl.DateTimeFormat("ko-KR", { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" }).format(ts); }
+    function isToday(ts) {
+      const date = new Date(ts);
+      const today = new Date();
+      return date.getFullYear() === today.getFullYear()
+        && date.getMonth() === today.getMonth()
+        && date.getDate() === today.getDate();
+    }
     function activeUser() { return state.users[state.activeUser] || state.users.clem; }
     function currentProject() { return state.projects.find(p => p.id === state.activeProject) || state.projects[0]; }
 
@@ -383,6 +391,7 @@
     function renderSidebar() {
       $("#userSwitcher").innerHTML = Object.values(state.users).map(u => `<button class="user-switch ${state.activeUser === u.id ? "active" : ""}" style="--user-color:${u.color}" data-choose-user="${u.id}"><span class="dot" style="background:${u.color}"></span>${escapeHtml(u.name)}</button>`).join("");
       $("#announcementButton").classList.toggle("active", state.activeView === "announcements");
+      $$("[data-view]").forEach(button => button.classList.toggle("active", state.activeView === button.dataset.view));
       $("#announcementCount").textContent = state.entries.filter(e => e.projectId === "__announcements__").length;
       $("#personalFolders").innerHTML = Object.values(state.users).map(u => {
         return `<button class="nav-item ${state.activeView === "personalNote" && state.noteUser === u.id ? "active" : ""}" data-personal-note="${u.id}"><span class="dot" style="background:${u.color}"></span><span>${escapeHtml(u.name)} 개인 노트</span></button>`;
@@ -392,18 +401,19 @@
         return `<button class="project-item ${state.activeView === "project" && p.id === state.activeProject ? "active" : ""}" data-project="${p.id}"><span class="folder-icon" style="color:${p.color}">▰</span><span>${escapeHtml(p.name)}</span><span class="count">${count}</span></button>`;
       }).join("");
       $("#pinnedCount").textContent = state.entries.filter(e => e.pinned).length;
+      $("#todayCount").textContent = state.entries.filter(e => isToday(e.createdAt)).length;
       $("#allCount").textContent = state.entries.length;
     }
     function renderMobileBar() {
       const projectOptions = state.projects.map(p => `<option value="project:${p.id}" ${state.activeView === "project" && p.id === state.activeProject ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("");
       const noteOptions = Object.values(state.users).map(u => `<option value="note:${u.id}" ${state.activeView === "personalNote" && state.noteUser === u.id ? "selected" : ""}>${escapeHtml(u.name)} 개인 노트</option>`).join("");
-      $("#mobileProjectSelect").innerHTML = `<option value="announcements" ${state.activeView === "announcements" ? "selected" : ""}>📌 공지사항</option><optgroup label="프로젝트">${projectOptions}</optgroup><optgroup label="개인 노트">${noteOptions}</optgroup>`;
+      $("#mobileProjectSelect").innerHTML = `<option value="announcements" ${state.activeView === "announcements" ? "selected" : ""}>📌 공지사항</option><option value="today" ${state.activeView === "today" ? "selected" : ""}>◷ Today updates</option><optgroup label="프로젝트">${projectOptions}</optgroup><optgroup label="개인 노트">${noteOptions}</optgroup>`;
       $("#mobileUserSelect").innerHTML = Object.values(state.users).map(u => `<option value="${u.id}" ${u.id === state.activeUser ? "selected" : ""}>${escapeHtml(u.name)}</option>`).join("");
       $("#mobileUserSelect").style.color = activeUser().color;
     }
     function renderHeader() {
       const project = currentProject();
-      const labels = { project: project.name, announcements: "공지사항", all: "All activity", pinned: "Pinned updates", personalNote: `${state.users[state.noteUser]?.name || ""} 개인 노트` };
+      const labels = { project: project.name, announcements: "공지사항", today: "Today updates", all: "All activity", pinned: "Pinned updates", personalNote: `${state.users[state.noteUser]?.name || ""} 개인 노트` };
       $("#projectTitle").textContent = labels[state.activeView] || project.name;
       $("#projectSubtitle").textContent = state.activeView === "announcements" ? "팀 전체가 확인할 중요한 소식" : state.activeView === "personalNote" ? "Private thoughts and ideas" : state.activeView === "project" ? project.desc : "Filtered development journal";
       $("#deleteCurrentProjectBtn").classList.toggle("hidden", state.activeView !== "project");
@@ -416,6 +426,7 @@
       let list = [...state.entries];
       if (state.activeView === "project") list = list.filter(e => e.projectId === state.activeProject);
       if (state.activeView === "announcements") list = list.filter(e => e.projectId === "__announcements__");
+      if (state.activeView === "today") list = list.filter(e => isToday(e.createdAt));
       if (state.activeView === "pinned") list = list.filter(e => e.pinned);
       if (activeFilter !== "All") list = list.filter(e => e.status === activeFilter);
       const q = $("#searchInput").value.trim().toLowerCase();
@@ -604,6 +615,7 @@
     $("#mobileProjectSelect").addEventListener("change", e => {
       const [type, id] = e.target.value.split(":");
       if (type === "announcements") state.activeView = "announcements";
+      else if (type === "today") state.activeView = "today";
       else if (type === "note") { state.noteUser = id; state.activeView = "personalNote"; }
       else { state.activeProject = id; state.activeView = "project"; }
       saveState(); render();
