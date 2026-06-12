@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Devlog Duo</title>
   <style>
     :root {
@@ -15,6 +15,7 @@
       --accent-soft: #dcebe2;
       --shadow: 0 18px 50px rgba(32,42,35,.08);
       --radius: 18px;
+      --app-height: 100vh;
     }
     * { box-sizing: border-box; }
     body {
@@ -128,9 +129,10 @@
     @media (max-width: 1050px) { .app { grid-template-columns: 220px 1fr; } .rightbar { display: none; } }
     @media (max-width: 720px) {
       body { background: #f4f4ef; }
-      .app { display: block; padding: 0; height: 100dvh; }
+      body, .app { overflow: hidden; }
+      .app { display: block; padding: 0; height: var(--app-height); }
       .sidebar, .rightbar, .topbar { display: none; }
-      .main { height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }
+      .main { height: var(--app-height); border: 0; border-radius: 0; box-shadow: none; }
       .mobile-bar { display: flex; align-items: center; gap: 8px; padding: max(9px, env(safe-area-inset-top)) 10px 9px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.94); }
       .mobile-bar select { min-width: 0; border: 1px solid var(--line); background: white; border-radius: 10px; padding: 9px 8px; font-size: 12px; font-weight: 700; }
       #mobileProjectSelect { flex: 1; }
@@ -139,13 +141,13 @@
       .feed { padding: 14px 10px; }
       .personal-note-view { padding: 10px; }
       .personal-note-card { padding: 15px; border-radius: 12px; }
-      .personal-note-editor { min-height: calc(100dvh - 155px); }
+      .personal-note-editor { min-height: calc(var(--app-height) - 155px); }
       .entry { grid-template-columns: 27px minmax(0, 1fr); gap: 8px; margin-bottom: 15px; }
       .entry .avatar { width: 27px; height: 27px; font-size: 9px; }
       .entry-head { margin-bottom: 4px; } .entry-time { font-size: 9px; } .entry-actions { display: none; }
       .bubble { padding: 10px 11px; border-radius: 4px 13px 13px 13px; font-size: 13px; }
       .bubble img { max-height: 260px; margin-top: 8px; }
-      .composer { padding: 8px 9px max(9px, env(safe-area-inset-bottom)); }
+      .composer { padding: 8px 9px max(9px, env(safe-area-inset-bottom)); flex: 0 0 auto; background: white; }
       .composer textarea { min-height: 48px; max-height: 100px; padding: 10px; border-radius: 11px; }
       .compose-tools { display: grid; grid-template-columns: 34px 94px 1fr; gap: 6px; margin-top: 6px; }
       .compose-tools select { width: 94px; padding: 7px 4px; }
@@ -298,7 +300,9 @@
       $("#allCount").textContent = state.entries.length;
     }
     function renderMobileBar() {
-      $("#mobileProjectSelect").innerHTML = state.projects.map(p => `<option value="${p.id}" ${p.id === state.activeProject ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("");
+      const projectOptions = state.projects.map(p => `<option value="project:${p.id}" ${state.activeView === "project" && p.id === state.activeProject ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("");
+      const noteOptions = Object.values(state.users).map(u => `<option value="note:${u.id}" ${state.activeView === "personalNote" && state.noteUser === u.id ? "selected" : ""}>${escapeHtml(u.name)} 개인 노트</option>`).join("");
+      $("#mobileProjectSelect").innerHTML = `<optgroup label="프로젝트">${projectOptions}</optgroup><optgroup label="개인 노트">${noteOptions}</optgroup>`;
       $("#mobileUserSelect").innerHTML = Object.values(state.users).map(u => `<option value="${u.id}" ${u.id === state.activeUser ? "selected" : ""}>${escapeHtml(u.name)}</option>`).join("");
       $("#mobileUserSelect").style.color = activeUser().color;
     }
@@ -378,6 +382,7 @@
       const project = state.projects.find(p => p.id === id);
       const count = state.entries.filter(e => e.projectId === id).length;
       if (!project || !confirm(`"${project.name}" 프로젝트와 기록 ${count}개를 모두 삭제할까요?`)) return;
+      if (prompt("삭제 비밀번호를 입력하세요") !== "1234") return toast("비밀번호가 맞지 않아 삭제하지 않았습니다");
       state.projects = state.projects.filter(p => p.id !== id);
       state.entries = state.entries.filter(e => e.projectId !== id);
       if (state.activeProject === id) state.activeProject = state.projects[0].id;
@@ -485,7 +490,12 @@
       postEntry();
     });
     $("#searchInput").addEventListener("input", renderFeed);
-    $("#mobileProjectSelect").addEventListener("change", e => { state.activeProject = e.target.value; state.activeView = "project"; saveState(); render(); });
+    $("#mobileProjectSelect").addEventListener("change", e => {
+      const [type, id] = e.target.value.split(":");
+      if (type === "note") { state.noteUser = id; state.activeView = "personalNote"; }
+      else { state.activeProject = id; state.activeView = "project"; }
+      saveState(); render();
+    });
     $("#mobileUserSelect").addEventListener("change", e => chooseUser(e.target.value));
     $("#imageBtn").onclick = () => $("#imageInput").click();
     $("#imageInput").onchange = e => { addImageFiles(e.target.files); e.target.value = ""; };
@@ -509,6 +519,21 @@
         saveState();
       }, 350);
     });
+    function syncMobileViewport() {
+      const viewport = window.visualViewport;
+      document.documentElement.style.setProperty("--app-height", `${viewport ? viewport.height : window.innerHeight}px`);
+    }
+    function keepEditorVisible(event) {
+      if (!event.target.matches("#messageInput, #personalNoteEditor")) return;
+      setTimeout(() => event.target.scrollIntoView({ block: "center", behavior: "smooth" }), 120);
+    }
+    syncMobileViewport();
+    window.addEventListener("resize", syncMobileViewport);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", syncMobileViewport);
+      window.visualViewport.addEventListener("scroll", syncMobileViewport);
+    }
+    document.addEventListener("focusin", keepEditorVisible);
     $("#settingsBtn").onclick = openSettings;
     $("#deleteCurrentProjectBtn").onclick = () => deleteProject(state.activeProject);
     $("#addProjectBtn").onclick = openProjectModal;
