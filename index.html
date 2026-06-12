@@ -63,9 +63,6 @@
     .search { position: relative; width: 150px; flex: 0 0 auto; }
     .search input { width: 100%; padding: 7px 10px 7px 35px; border: 1px solid var(--line); background: rgba(255,255,255,.7); border-radius: 9px; outline: none; font-size: 11px; }
     .search span { position: absolute; left: 11px; top: 3px; color: var(--muted); font-size: 22px; line-height: 28px; font-weight: 700; pointer-events: none; }
-    .filter-row { display: flex; gap: 6px; margin-top: 10px; overflow-x: auto; }
-    .chip { border: 1px solid var(--line); background: white; border-radius: 999px; padding: 5px 10px; color: var(--muted); font-size: 11px; white-space: nowrap; }
-    .chip.active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
     .feed { flex: 1; overflow: auto; padding: 20px; }
     .personal-note-view { flex: 1; overflow: auto; padding: 28px; background: rgba(255,255,255,.34); }
     .personal-note-card { max-width: 760px; min-height: 100%; margin: 0 auto; padding: 24px; background: #fffdf3; border: 1px solid #e3dfc9; border-radius: 16px; box-shadow: 0 16px 40px rgba(44,42,27,.06); }
@@ -89,7 +86,6 @@
     .entry-actions button { border: 0; background: transparent; color: var(--muted); font-size: 11px; }
     .bubble { background: color-mix(in srgb, var(--writer-color) 7%, white); border: 1px solid color-mix(in srgb, var(--writer-color) 14%, var(--line)); padding: 12px 14px; border-radius: 5px 15px 15px 15px; line-height: 1.55; font-size: 13px; white-space: pre-wrap; word-break: break-word; }
     .bubble img { display: block; max-width: min(100%, 520px); max-height: 380px; object-fit: cover; border-radius: 10px; margin-top: 10px; cursor: zoom-in; }
-    .status { padding: 3px 7px; border-radius: 99px; background: #fff0d7; color: #8b5d13; font-size: 10px; }
     .composer { border-top: 1px solid var(--line); padding: 12px 16px 16px; background: rgba(255,255,255,.45); }
     .preview { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
     .preview-item { position: relative; display: inline-block; }
@@ -161,8 +157,7 @@
       .bubble img { max-height: 260px; margin-top: 8px; }
       .composer { padding: 8px 9px max(9px, env(safe-area-inset-bottom)); flex: 0 0 auto; background: white; }
       .composer textarea { min-height: 48px; max-height: 100px; padding: 10px; border-radius: 11px; }
-      .compose-tools { display: grid; grid-template-columns: 34px 94px 1fr; gap: 6px; margin-top: 6px; }
-      .compose-tools select { width: 94px; padding: 7px 4px; }
+      .compose-tools { display: grid; grid-template-columns: 34px 1fr; gap: 6px; margin-top: 6px; }
       .send { margin-left: 0; width: 100%; padding: 8px; }
       .preview { max-height: 72px; overflow-x: auto; flex-wrap: nowrap; padding-top: 5px; }
       .preview img { width: 72px; height: 54px; }
@@ -202,7 +197,6 @@
           <div class="project-heading"><h1 id="projectTitle">Loading...</h1><p id="projectSubtitle">Shared development journal</p></div>
           <div class="search"><span>⌕</span><input id="searchInput" placeholder="Search"></div>
         </div>
-        <div class="filter-row" id="filterRow"></div>
       </header>
       <section class="feed" id="feed"></section>
       <section class="personal-note-view hidden" id="personalNoteView">
@@ -218,7 +212,6 @@
         <div class="compose-tools">
           <button class="icon-btn" id="imageBtn" title="사진 첨부">＋</button>
           <input class="hidden" type="file" accept="image/*" multiple id="imageInput">
-          <select id="statusInput"><option>Progress</option><option>Done</option><option>Blocked</option><option>Idea</option><option>Bug</option></select>
           <button class="send" id="sendBtn">Post update</button>
         </div>
       </section>
@@ -260,7 +253,6 @@
     };
     let state = loadState();
     let pendingImages = [];
-    let activeFilter = "All";
 
     const $ = s => document.querySelector(s);
     const $$ = s => [...document.querySelectorAll(s)];
@@ -423,9 +415,6 @@
       $("#projectTitle").title = state.activeView === "project" ? "프로젝트 상세정보 열기" : "";
       $("#projectSubtitle").textContent = state.activeView === "announcements" ? "함께 기록하는 노트" : state.activeView === "personalNote" ? "Private thoughts and ideas" : state.activeView === "project" ? project.desc : "Filtered development journal";
       $("#searchInput").closest(".search").classList.toggle("hidden", state.activeView === "personalNote");
-      $("#filterRow").classList.toggle("hidden", state.activeView === "personalNote");
-      const filters = ["All", "Progress", "Done", "Blocked", "Idea", "Bug"];
-      $("#filterRow").innerHTML = filters.map(f => `<button class="chip ${activeFilter === f ? "active" : ""}" data-filter="${f}">${f}</button>`).join("");
     }
     function getVisibleEntries() {
       let list = [...state.entries];
@@ -433,9 +422,8 @@
       if (state.activeView === "announcements") list = list.filter(e => e.projectId === "__announcements__");
       if (state.activeView === "today") list = list.filter(e => isToday(e.createdAt));
       if (state.activeView === "pinned") list = list.filter(e => e.pinned);
-      if (activeFilter !== "All") list = list.filter(e => e.status === activeFilter);
       const q = $("#searchInput").value.trim().toLowerCase();
-      if (q) list = list.filter(e => `${e.text} ${e.status} ${state.users[e.userId]?.name}`.toLowerCase().includes(q));
+      if (q) list = list.filter(e => `${e.text} ${state.users[e.userId]?.name}`.toLowerCase().includes(q));
       return list.sort((a,b) => Number(b.pinned) - Number(a.pinned) || a.createdAt - b.createdAt);
     }
     function renderFeed() {
@@ -452,7 +440,6 @@
           previous.items.push(entry);
           previous.text = previous.items.map(item => item.text).filter(Boolean).join("\n");
           previous.images = previous.items.flatMap(item => [...(item.images || []), ...(item.image ? [item.image] : [])]);
-          previous.status = entry.status;
           previous.createdAt = entry.createdAt;
           previous.lastId = entry.id;
           return groups;
@@ -468,7 +455,6 @@
           <div><div class="entry-head">
             ${state.settings.showNames ? `<span class="entry-name" style="color:${u.color}">${escapeHtml(u.name)}</span>` : ""}
             ${state.activeView === "today" ? `<span class="source-label">${escapeHtml(source)}</span>` : ""}
-            <span class="status">${escapeHtml(e.status)}</span>
             <span class="entry-time">${formatTime(e.createdAt)}</span>${e.pinned ? `<span class="pin">★ pinned</span>` : ""}
             <span class="entry-actions"><button data-pin="${e.lastId}">${e.pinned ? "Unpin" : "Pin"}</button><button data-delete-group="${e.items.map(item => item.id).join(",")}">Delete</button></span>
           </div><div class="bubble">${escapeHtml(e.text)}${e.images.map(src => `<img src="${src}" alt="Attached image">`).join("")}</div>
@@ -514,10 +500,9 @@
       const text = $("#messageInput").value.trim();
       if (!text && !pendingImages.length) return toast("내용 또는 사진을 추가해주세요");
       const targetView = state.activeView === "announcements" ? "announcements" : "project";
-      const entry = { id: crypto.randomUUID(), projectId: targetView === "announcements" ? "__announcements__" : state.activeProject, userId: state.activeUser, text, images: [...pendingImages], status: $("#statusInput").value, pinned: targetView === "announcements", createdAt: Date.now() };
+      const entry = { id: crypto.randomUUID(), projectId: targetView === "announcements" ? "__announcements__" : state.activeProject, userId: state.activeUser, text, images: [...pendingImages], pinned: targetView === "announcements", createdAt: Date.now() };
       state.entries.push(entry);
       state.activeView = targetView;
-      activeFilter = "All";
       $("#searchInput").value = "";
       if (!saveState(true)) {
         state.entries = state.entries.filter(e => e.id !== entry.id);
@@ -613,7 +598,6 @@
       if (t.dataset.deleteProject) deleteProject(t.dataset.deleteProject);
       if (t.dataset.personalNote) { state.noteUser = t.dataset.personalNote; state.activeView = "personalNote"; saveState(); render(); }
       if (t.dataset.view) { state.activeView = t.dataset.view; render(); }
-      if (t.dataset.filter) { activeFilter = t.dataset.filter; renderHeader(); renderFeed(); }
       if (t.dataset.pin) { const x = state.entries.find(x => x.id === t.dataset.pin); x.pinned = !x.pinned; saveState(true); render(); }
       if (t.dataset.delete && confirm("이 기록을 삭제할까요?")) { state.entries = state.entries.filter(x => x.id !== t.dataset.delete); saveState(true); render(); }
       if (t.dataset.deleteGroup && confirm("묶인 기록을 모두 삭제할까요?")) { const ids = t.dataset.deleteGroup.split(","); state.entries = state.entries.filter(x => !ids.includes(x.id)); saveState(true); render(); }
