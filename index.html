@@ -427,7 +427,11 @@
       if (state.activeView === "pinned") list = list.filter(e => e.pinned);
       const q = $("#searchInput").value.trim().toLowerCase();
       if (q) list = list.filter(e => `${e.text} ${state.users[e.userId]?.name}`.toLowerCase().includes(q));
-      return list.sort((a,b) => Number(b.pinned) - Number(a.pinned) || a.createdAt - b.createdAt);
+      return list.sort((a,b) => {
+        if (Boolean(a.pinned) !== Boolean(b.pinned)) return Number(b.pinned) - Number(a.pinned);
+        if (a.pinned && b.pinned) return (a.pinnedAt || a.createdAt) - (b.pinnedAt || b.createdAt) || a.createdAt - b.createdAt;
+        return a.createdAt - b.createdAt;
+      });
     }
     function renderFeed() {
       const personal = state.activeView === "personalNote";
@@ -439,7 +443,9 @@
       if (!entries.length) { $("#feed").innerHTML = `<div class="empty"><b>아직 기록이 없습니다.</b>첫 개발 업데이트를 남겨보세요. 짧아도 충분합니다.</div>`; return; }
       const grouped = entries.reduce((groups, entry) => {
         const previous = groups[groups.length - 1];
-        if (previous && previous.pinned === entry.pinned && previous.userId === entry.userId && previous.projectId === entry.projectId && entry.createdAt - previous.createdAt <= 60000) {
+        const samePinnedGroup = previous && previous.pinned && entry.pinned && previous.pinGroupId && previous.pinGroupId === entry.pinGroupId;
+        const sameRegularGroup = previous && !previous.pinned && !entry.pinned && previous.userId === entry.userId && previous.projectId === entry.projectId && entry.createdAt - previous.createdAt <= 60000;
+        if (samePinnedGroup || sameRegularGroup) {
           previous.items.push(entry);
           previous.text = previous.items.map(item => item.text).filter(Boolean).join("\n");
           previous.images = previous.items.flatMap(item => [...(item.images || []), ...(item.image ? [item.image] : [])]);
@@ -638,7 +644,18 @@
         const ids = t.dataset.pinGroup.split(",");
         const selected = state.entries.filter(x => ids.includes(x.id));
         const shouldPin = !selected.every(x => x.pinned);
-        selected.forEach(x => x.pinned = shouldPin);
+        const pinGroupId = crypto.randomUUID();
+        const pinnedAt = Date.now();
+        selected.forEach(x => {
+          x.pinned = shouldPin;
+          if (shouldPin) {
+            x.pinGroupId = pinGroupId;
+            x.pinnedAt = pinnedAt;
+          } else {
+            delete x.pinGroupId;
+            delete x.pinnedAt;
+          }
+        });
         saveState(true); render();
         if (shouldPin) $("#feed").scrollTop = 0;
       }
