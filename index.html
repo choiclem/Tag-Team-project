@@ -18,6 +18,16 @@
       --radius: 18px;
       --app-height: 100vh;
     }
+    :root[data-theme="dark"] {
+      --bg: #121714;
+      --panel: rgba(28,35,30,.92);
+      --ink: #eef3ef;
+      --muted: #9aa69e;
+      --line: #3a443d;
+      --accent: #72c69c;
+      --accent-soft: #263d31;
+      --shadow: 0 18px 50px rgba(0,0,0,.28);
+    }
     * { box-sizing: border-box; }
     body {
       margin: 0; min-height: 100vh; color: var(--ink); background:
@@ -25,6 +35,30 @@
       radial-gradient(circle at 96% 94%, #e7ded1 0, transparent 30%), var(--bg);
       font-family: Inter, "Noto Sans KR", system-ui, sans-serif;
     }
+    :root[data-theme="dark"] body { background: radial-gradient(circle at 8% 0%, #26362d 0, transparent 29%), radial-gradient(circle at 96% 94%, #332b25 0, transparent 30%), var(--bg); }
+    :root[data-theme="dark"] .panel,
+    :root[data-theme="dark"] .composer,
+    :root[data-theme="dark"] .mobile-bar { border-color: var(--line); }
+    :root[data-theme="dark"] .user-switch,
+    :root[data-theme="dark"] .bubble,
+    :root[data-theme="dark"] .search input,
+    :root[data-theme="dark"] .composer textarea,
+    :root[data-theme="dark"] .compose-tools select,
+    :root[data-theme="dark"] .shared-project,
+    :root[data-theme="dark"] .btn,
+    :root[data-theme="dark"] .form-group input,
+    :root[data-theme="dark"] .form-group textarea,
+    :root[data-theme="dark"] .form-group select,
+    :root[data-theme="dark"] .mobile-bar select { background-color: #202822; color: var(--ink); }
+    :root[data-theme="dark"] .personal-note-card { background: #24261f; border-color: #49483c; }
+    :root[data-theme="dark"] .modal { background: #1c241f; }
+    :root[data-theme="dark"] .user-card,
+    :root[data-theme="dark"] .nav-item:hover,
+    :root[data-theme="dark"] .nav-item.active,
+    :root[data-theme="dark"] .project-item:hover,
+    :root[data-theme="dark"] .project-item.active { background: #29332c; }
+    :root[data-theme="dark"] .pinned-stack { background: linear-gradient(#403a2b 88%, rgba(64,58,43,.2)); }
+    :root[data-theme="dark"] .sync-indicator { background: rgba(28,35,30,.92); }
     button, input, textarea, select { font: inherit; color: inherit; }
     button { cursor: pointer; }
     .hidden { display: none !important; }
@@ -141,7 +175,7 @@
     .lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; }
     @media (max-width: 1050px) { .app { grid-template-columns: 220px 1fr; } .rightbar { display: none; } }
     @media (max-width: 720px) {
-      body { background: #f4f4ef; }
+      body { background: var(--bg); }
       .app { display: block; padding: 0; height: var(--app-height); }
       .sidebar, .rightbar, .topbar { display: none; }
       .main { height: var(--app-height); border: 0; border-radius: 0; box-shadow: none; }
@@ -259,6 +293,7 @@
     let state = loadState();
     let pendingImages = [];
     let pinnedCollapsed = localStorage.getItem("devlog-duo-pinned-collapsed") === "true";
+    let deviceTheme = localStorage.getItem("devlog-duo-theme") || "light";
 
     const $ = s => document.querySelector(s);
     const $$ = s => [...document.querySelectorAll(s)];
@@ -382,6 +417,11 @@
     }
     function activeUser() { return state.users[state.activeUser] || state.users.clem; }
     function currentProject() { return state.projects.find(p => p.id === state.activeProject) || state.projects[0]; }
+    function applyTheme(theme) {
+      deviceTheme = theme;
+      document.documentElement.dataset.theme = theme;
+      localStorage.setItem("devlog-duo-theme", theme);
+    }
 
     function render() {
       renderSidebar(); renderHeader(); renderFeed(); renderRightbar(); renderUserChoices(); renderMobileBar();
@@ -631,6 +671,7 @@
       const users = Object.values(state.users);
       $("#formModalContent").innerHTML = `<h2>Settings</h2><p>작성자 이름과 글 색상, 표시 방식을 설정하고 데이터를 관리합니다.</p>
         <div class="settings-users">${users.map(u => `<div class="settings-row"><input data-name-setting="${u.id}" value="${escapeHtml(u.name)}"><input data-color-setting="${u.id}" type="color" value="${u.color}"></div>`).join("")}</div>
+        <div class="form-group"><label>Theme</label><select id="themeSetting"><option value="light" ${deviceTheme === "light" ? "selected" : ""}>Light mode</option><option value="dark" ${deviceTheme === "dark" ? "selected" : ""}>Dark mode</option></select></div>
         <div class="form-group"><label><input type="checkbox" id="showNamesSetting" ${state.settings.showNames ? "checked" : ""}> 글 옆에 작성자 이름 표시</label></div>
         <div class="form-actions"><button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="saveSettingsBtn">Save settings</button></div>`;
       $("#formModal").classList.remove("hidden");
@@ -749,10 +790,12 @@
       if (e.target.id === "saveSettingsBtn") {
         $$("[data-name-setting]").forEach(x => state.users[x.dataset.nameSetting].name = x.value.trim() || state.users[x.dataset.nameSetting].name);
         $$("[data-color-setting]").forEach(x => state.users[x.dataset.colorSetting].color = x.value);
+        applyTheme($("#themeSetting").value);
         state.settings.showNames = $("#showNamesSetting").checked; saveState(true); $("#formModal").classList.add("hidden"); render(); toast("설정을 저장했습니다");
       }
     });
     $("#lightbox").onclick = () => $("#lightbox").classList.add("hidden");
+    applyTheme(deviceTheme);
     if (window.matchMedia("(max-width: 720px)").matches) state.activeView = "today";
     render();
     if (!state.activeUser) $("#userModal").classList.remove("hidden");
