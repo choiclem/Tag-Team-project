@@ -168,7 +168,7 @@
     <aside class="panel sidebar">
       <div class="brand"><div class="brand-mark">&lt;/&gt;</div><div><strong>Devlog Duo</strong><small>Build, note, share.</small></div></div>
       <div class="user-switcher" id="userSwitcher"></div>
-      <button class="nav-item" id="announcementButton" data-announcements><span>📌</span><span>공지사항</span><span class="count" id="announcementCount">0</span></button>
+      <button class="nav-item" id="announcementButton" data-announcements><span>📌</span><span>공동 노트</span><span class="count" id="announcementCount">0</span></button>
       <div class="section-title">Project folders</div>
       <div id="sidebarProjects"></div>
       <div class="section-title">Personal folders</div>
@@ -407,15 +407,15 @@
     function renderMobileBar() {
       const projectOptions = state.projects.map(p => `<option value="project:${p.id}" ${state.activeView === "project" && p.id === state.activeProject ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("");
       const noteOptions = Object.values(state.users).map(u => `<option value="note:${u.id}" ${state.activeView === "personalNote" && state.noteUser === u.id ? "selected" : ""}>${escapeHtml(u.name)} 개인 노트</option>`).join("");
-      $("#mobileProjectSelect").innerHTML = `<option value="announcements" ${state.activeView === "announcements" ? "selected" : ""}>📌 공지사항</option><option value="today" ${state.activeView === "today" ? "selected" : ""}>◷ Today's updates</option><optgroup label="프로젝트">${projectOptions}</optgroup><optgroup label="개인 노트">${noteOptions}</optgroup>`;
+      $("#mobileProjectSelect").innerHTML = `<option value="announcements" ${state.activeView === "announcements" ? "selected" : ""}>📌 공동 노트</option><option value="today" ${state.activeView === "today" ? "selected" : ""}>◷ Today's updates</option><optgroup label="프로젝트">${projectOptions}</optgroup><optgroup label="개인 노트">${noteOptions}</optgroup>`;
       $("#mobileUserSelect").innerHTML = Object.values(state.users).map(u => `<option value="${u.id}" ${u.id === state.activeUser ? "selected" : ""}>${escapeHtml(u.name)}</option>`).join("");
       $("#mobileUserSelect").style.color = activeUser().color;
     }
     function renderHeader() {
       const project = currentProject();
-      const labels = { project: project.name, announcements: "공지사항", today: "Today's updates", all: "All activity", pinned: "Pinned updates", personalNote: `${state.users[state.noteUser]?.name || ""} 개인 노트` };
+      const labels = { project: project.name, announcements: "공동 노트", today: "Today's updates", all: "All activity", pinned: "Pinned updates", personalNote: `${state.users[state.noteUser]?.name || ""} 개인 노트` };
       $("#projectTitle").textContent = labels[state.activeView] || project.name;
-      $("#projectSubtitle").textContent = state.activeView === "announcements" ? "팀 전체가 확인할 중요한 소식" : state.activeView === "personalNote" ? "Private thoughts and ideas" : state.activeView === "project" ? project.desc : "Filtered development journal";
+      $("#projectSubtitle").textContent = state.activeView === "announcements" ? "함께 기록하는 노트" : state.activeView === "personalNote" ? "Private thoughts and ideas" : state.activeView === "project" ? project.desc : "Filtered development journal";
       $("#searchInput").closest(".search").classList.toggle("hidden", state.activeView === "personalNote");
       $("#filterRow").classList.toggle("hidden", state.activeView === "personalNote");
       const filters = ["All", "Progress", "Done", "Blocked", "Idea", "Bug"];
@@ -456,12 +456,12 @@
       }, []);
       $("#feed").innerHTML = grouped.map(e => {
         const u = state.users[e.userId] || { name: "Unknown", color: "#777" };
-        const source = e.projectId === "__announcements__" ? "공지사항" : state.projects.find(p => p.id === e.projectId)?.name || "Unknown project";
+        const source = e.projectId === "__announcements__" ? "공동 노트" : state.projects.find(p => p.id === e.projectId)?.name || "Unknown project";
         return `<article class="entry">
           <div class="avatar" style="background:${u.color}">${initials(u.name)}</div>
           <div><div class="entry-head">
-            ${state.activeView === "today" ? `<span class="source-label">${escapeHtml(source)}</span>` : ""}
             ${state.settings.showNames ? `<span class="entry-name" style="color:${u.color}">${escapeHtml(u.name)}</span>` : ""}
+            ${state.activeView === "today" ? `<span class="source-label">${escapeHtml(source)}</span>` : ""}
             <span class="status">${escapeHtml(e.status)}</span>
             <span class="entry-time">${formatTime(e.createdAt)}</span>${e.pinned ? `<span class="pin">★ pinned</span>` : ""}
             <span class="entry-actions"><button data-pin="${e.lastId}">${e.pinned ? "Unpin" : "Pin"}</button><button data-delete-group="${e.items.map(item => item.id).join(",")}">Delete</button></span>
