@@ -79,6 +79,8 @@
     .pinned-stack { position: sticky; top: -20px; z-index: 5; padding: 20px 0 3px; margin-top: -20px; background: linear-gradient(var(--bg) 82%, transparent); }
     .pinned-stack:empty { display: none; }
     .pinned-stack .entry { margin-bottom: 6px; }
+    .pinned-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; padding: 0 4px; color: #9a6b1c; font-size: 10px; font-weight: 800; }
+    .pinned-toggle { border: 0; background: transparent; color: var(--muted); font-size: 10px; padding: 3px 5px; }
     .entry-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; }
     .entry-name { font-weight: 800; font-size: 13px; }
     .source-label { padding: 2px 6px; border-radius: 6px; background: #edf0e9; color: var(--muted); font-size: 9px; font-weight: 800; }
@@ -256,6 +258,7 @@
     };
     let state = loadState();
     let pendingImages = [];
+    let pinnedCollapsed = localStorage.getItem("devlog-duo-pinned-collapsed") === "true";
 
     const $ = s => document.querySelector(s);
     const $$ = s => [...document.querySelectorAll(s)];
@@ -472,7 +475,8 @@
       };
       const pinned = grouped.filter(e => e.pinned);
       const regular = grouped.filter(e => !e.pinned);
-      $("#feed").innerHTML = `<div class="pinned-stack">${pinned.map(renderEntry).join("")}</div>${regular.map(renderEntry).join("")}`;
+      const pinnedContent = pinnedCollapsed ? "" : pinned.map(renderEntry).join("");
+      $("#feed").innerHTML = `<div class="pinned-stack">${pinned.length ? `<div class="pinned-header"><span>★ Pinned ${pinned.length}</span><button class="pinned-toggle" data-toggle-pinned>${pinnedCollapsed ? "펼치기" : "접기"}</button></div>${pinnedContent}` : ""}</div>${regular.map(renderEntry).join("")}`;
       $("#feed").scrollTop = $("#feed").scrollHeight;
     }
     function renderPersonalNote() {
@@ -658,6 +662,11 @@
         });
         saveState(true); render();
         if (shouldPin) $("#feed").scrollTop = 0;
+      }
+      if (t.dataset.togglePinned !== undefined) {
+        pinnedCollapsed = !pinnedCollapsed;
+        localStorage.setItem("devlog-duo-pinned-collapsed", String(pinnedCollapsed));
+        renderFeed();
       }
       if (t.dataset.delete && confirm("이 기록을 삭제할까요?")) { state.entries = state.entries.filter(x => x.id !== t.dataset.delete); saveState(true); render(); }
       if (t.dataset.deleteGroup && confirm("묶인 기록을 모두 삭제할까요?")) { const ids = t.dataset.deleteGroup.split(","); state.entries = state.entries.filter(x => !ids.includes(x.id)); saveState(true); render(); }
