@@ -480,8 +480,8 @@
       if (state.projects.length <= 1) return toast("프로젝트는 최소 한 개가 필요합니다");
       const project = state.projects.find(p => p.id === id);
       const count = state.entries.filter(e => e.projectId === id).length;
-      if (!project || !confirm(`"${project.name}" 프로젝트와 기록 ${count}개를 모두 삭제할까요?`)) return;
-      if (prompt("삭제 비밀번호를 입력하세요") !== "1234") return toast("비밀번호가 맞지 않아 삭제하지 않았습니다");
+      if (!project || !confirm(`"${project.name}" 프로젝트와 기록 ${count}개를 모두 삭제할까요?\n\n삭제 비밀번호: 1234`)) return;
+      if (prompt("삭제 비밀번호 1234를 입력하세요") !== "1234") return toast("비밀번호가 맞지 않아 삭제하지 않았습니다");
       state.projects = state.projects.filter(p => p.id !== id);
       state.entries = state.entries.filter(e => e.projectId !== id);
       if (state.activeProject === id) state.activeProject = state.projects[0].id;
