@@ -73,6 +73,7 @@
     :root[data-theme="dark"] .pinned-stack { background: #253047; color: #e3ebff; }
     :root[data-theme="dark"] .pinned-header { color: #e3ebff; }
     :root[data-theme="dark"] .pinned-header:hover { background: #303d58; }
+    :root[data-theme="dark"] .sync-warning { background: #3a2f18; border-color: #735b22; color: #ffe6a3; }
     :root[data-theme="dark"] .personal-note-view { background: rgba(0,0,0,.12); }
     :root[data-theme="dark"] .sync-indicator { background: rgba(23,23,23,.94); }
     button, input, textarea, select { font: inherit; color: inherit; }
@@ -103,6 +104,7 @@
     .icon-btn { width: 34px; height: 34px; border: 1px solid var(--line); background: white; border-radius: 10px; display: grid; place-items: center; }
     .main { display: flex; flex-direction: column; overflow: hidden; }
     .mobile-bar { display: none; }
+    .sync-warning { margin: 10px 16px 0; padding: 9px 12px; border: 1px solid #e7c46b; border-radius: 12px; background: #fff5d5; color: #6c4d10; font-size: 12px; line-height: 1.45; }
     .topbar { padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }
     .topline { display: flex; align-items: center; gap: 10px; }
     .project-heading { min-width: 0; flex: 1; }
@@ -199,6 +201,7 @@
       .sidebar, .rightbar, .topbar { display: none; }
       .main { height: var(--app-height); border: 0; border-radius: 0; box-shadow: none; }
       .mobile-bar { display: flex; align-items: center; gap: 8px; padding: max(9px, env(safe-area-inset-top)) 10px 9px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.94); }
+      .sync-warning { margin: 8px 10px 0; padding: 8px 10px; font-size: 11px; border-radius: 10px; }
       .mobile-bar select { min-width: 0; border: 1px solid var(--line); background: white; border-radius: 10px; padding: 9px 8px; font-size: 12px; font-weight: 700; }
       #mobileProjectSelect { flex: 1; }
       #mobileUserSelect { width: 88px; color: var(--accent); }
@@ -257,6 +260,7 @@
           <div class="search"><span>⌕</span><input id="searchInput" placeholder="Search"></div>
         </div>
       </header>
+      <div class="sync-warning hidden" id="syncWarning"></div>
       <section class="feed" id="feed"></section>
       <section class="personal-note-view hidden" id="personalNoteView">
         <div class="personal-note-card">
@@ -384,34 +388,54 @@
       const status = $("#syncStatus");
       if (status) status.textContent = text;
     }
+    function setSyncWarning(message = "") {
+      const warning = $("#syncWarning");
+      if (!warning) return;
+      warning.textContent = message;
+      warning.classList.toggle("hidden", !message);
+    }
+    function reportSyncIssue(status, message, error) {
+      setSyncStatus(status);
+      setSyncWarning(message);
+      if (error) console.error(message, error);
+    }
+    function clearSyncIssue(status = "동기화됨") {
+      setSyncStatus(status);
+      setSyncWarning("");
+    }
     function scheduleRemoteSave() {
-      if (!supabaseClient) return;
+      if (!supabaseClient) {
+        reportSyncIssue("연결 없음", "온라인 동기화 서버에 연결되지 않았습니다. 이 기기의 임시 저장소에만 저장될 수 있습니다.");
+        return;
+      }
       clearTimeout(remoteSaveTimer);
       setSyncStatus("저장 중");
       remoteSaveTimer = setTimeout(syncToSupabase, 300);
     }
     async function syncToSupabase() {
-      if (!supabaseClient) return;
+      if (!supabaseClient) {
+        reportSyncIssue("연결 없음", "온라인 동기화 서버에 연결되지 않았습니다. 이 기기의 임시 저장소에만 저장될 수 있습니다.");
+        return;
+      }
       const { error } = await supabaseClient.from("app_state").upsert({
         id: REMOTE_ROW_ID,
         data: sharedSnapshot(),
         updated_at: new Date().toISOString()
       });
-      setSyncStatus(error ? "동기화 오류" : "동기화됨");
-      if (error) console.error("Supabase sync failed", error);
+      if (error) reportSyncIssue("동기화 오류", "서버에 저장하지 못했습니다. 연결이 회복되기 전까지 다른 기기에는 보이지 않을 수 있습니다.", error);
+      else clearSyncIssue("동기화됨");
     }
     async function initializeSupabase() {
       const config = window.DEVLOG_SUPABASE || {};
       if (!config.url || !config.anonKey || !window.supabase?.createClient) {
-        setSyncStatus("설정 필요");
+        reportSyncIssue("설정 필요", "온라인 동기화 설정을 불러오지 못했습니다. 이 기기의 임시 저장소만 사용 중입니다.");
         return;
       }
       supabaseClient = window.supabase.createClient(config.url, config.anonKey);
       setSyncStatus("연결 중");
       const { data, error } = await supabaseClient.from("app_state").select("data").eq("id", REMOTE_ROW_ID).maybeSingle();
       if (error) {
-        setSyncStatus("연결 오류");
-        console.error("Supabase load failed", error);
+        reportSyncIssue("연결 오류", "온라인 동기화 서버에 접속하지 못했습니다. 서버가 paused 되었거나 네트워크 연결이 불안정할 수 있습니다.", error);
         return;
       }
       if (data?.data) applySharedState(data.data);
@@ -419,10 +443,13 @@
       supabaseClient.channel("devlog-duo-state")
         .on("postgres_changes", { event: "*", schema: "public", table: "app_state", filter: `id=eq.${REMOTE_ROW_ID}` }, payload => {
           if (payload.new?.data) applySharedState(payload.new.data);
-          setSyncStatus("동기화됨");
+          clearSyncIssue("동기화됨");
         })
         .subscribe(status => {
-          if (status === "SUBSCRIBED") setSyncStatus("실시간 연결됨");
+          if (status === "SUBSCRIBED") clearSyncIssue("실시간 연결됨");
+          if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
+            reportSyncIssue("실시간 오류", "실시간 공유 연결이 끊겼습니다. 새로고침하거나 잠시 후 다시 확인해주세요.");
+          }
         });
     }
     function toast(msg) { const el = $("#toast"); el.textContent = msg; el.classList.remove("hidden"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.add("hidden"), 1800); }
