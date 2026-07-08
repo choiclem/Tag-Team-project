@@ -301,10 +301,14 @@
   <script src="supabase-config.js"></script>
   <script>
     const STORE_KEY = "devlog-duo-v1";
+    const PENDING_SYNC_KEY = "devlog-duo-pending-sync";
     const REMOTE_ROW_ID = "shared";
     let supabaseClient = null;
+    let realtimeChannel = null;
     let remoteSaveTimer = null;
+    let syncRetryTimer = null;
     let applyingRemoteState = false;
+    let pendingRemoteSync = localStorage.getItem(PENDING_SYNC_KEY) === "true";
     const seed = {
       users: {
         clem: { id: "clem", name: "Clem", color: "#2f7d5b", note: "- 오늘 확인할 PR\\n- API 에러 로그 정리" },
@@ -352,7 +356,10 @@
     function saveState(syncRemote = false) {
       try {
         localStorage.setItem(STORE_KEY, JSON.stringify(state));
-        if (syncRemote && !applyingRemoteState) scheduleRemoteSave();
+        if (syncRemote && !applyingRemoteState) {
+          markPendingSync();
+          scheduleRemoteSave();
+        }
         return true;
       } catch {
         toast("저장 공간이 부족합니다. 오래된 사진 기록을 삭제해주세요");
@@ -366,6 +373,39 @@
         entries: state.entries,
         settings: state.settings,
         dataVersion: state.dataVersion
+      };
+    }
+    function markPendingSync() {
+      pendingRemoteSync = true;
+      localStorage.setItem(PENDING_SYNC_KEY, "true");
+    }
+    function clearPendingSync() {
+      pendingRemoteSync = false;
+      localStorage.removeItem(PENDING_SYNC_KEY);
+    }
+    function mergeById(remoteItems = [], localItems = []) {
+      const merged = new Map();
+      remoteItems.forEach(item => item?.id && merged.set(item.id, item));
+      localItems.forEach(item => item?.id && merged.set(item.id, { ...(merged.get(item.id) || {}), ...item }));
+      return [...merged.values()];
+    }
+    function mergeUsers(remoteUsers = {}, localUsers = {}) {
+      const merged = { ...remoteUsers };
+      for (const [id, localUser] of Object.entries(localUsers)) {
+        const remoteUser = merged[id] || {};
+        const personalImages = [...new Set([...(remoteUser.personalImages || []), ...(localUser.personalImages || [])])];
+        merged[id] = { ...remoteUser, ...localUser };
+        if (personalImages.length) merged[id].personalImages = personalImages;
+      }
+      return merged;
+    }
+    function mergeSharedState(remote = {}, local = state) {
+      return {
+        users: mergeUsers(remote.users, local.users),
+        projects: mergeById(remote.projects, local.projects),
+        entries: mergeById(remote.entries, local.entries).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)),
+        settings: { ...(remote.settings || {}), ...(local.settings || {}) },
+        dataVersion: Math.max(remote.dataVersion || 0, local.dataVersion || 0, seed.dataVersion)
       };
     }
     function applySharedState(shared) {
@@ -398,6 +438,7 @@
       setSyncStatus(status);
       setSyncWarning(message);
       if (error) console.error(message, error);
+      if (pendingRemoteSync) scheduleSyncRetry();
     }
     function clearSyncIssue(status = "동기화됨") {
       setSyncStatus(status);
@@ -405,25 +446,39 @@
     }
     function scheduleRemoteSave() {
       if (!supabaseClient) {
-        reportSyncIssue("연결 없음", "온라인 동기화 서버에 연결되지 않았습니다. 이 기기의 임시 저장소에만 저장될 수 있습니다.");
+        reportSyncIssue("연결 없음", "온라인 동기화 서버에 연결되지 않았습니다. 이 기기에 먼저 저장하고, 서버가 다시 연결되면 자동으로 올립니다.");
         return;
       }
       clearTimeout(remoteSaveTimer);
       setSyncStatus("저장 중");
       remoteSaveTimer = setTimeout(syncToSupabase, 300);
     }
+    function scheduleSyncRetry(delay = 6000) {
+      clearTimeout(syncRetryTimer);
+      syncRetryTimer = setTimeout(() => {
+        if (pendingRemoteSync) initializeSupabase();
+      }, delay);
+    }
     async function syncToSupabase() {
       if (!supabaseClient) {
-        reportSyncIssue("연결 없음", "온라인 동기화 서버에 연결되지 않았습니다. 이 기기의 임시 저장소에만 저장될 수 있습니다.");
+        reportSyncIssue("연결 없음", "온라인 동기화 서버에 연결되지 않았습니다. 이 기기에 먼저 저장하고, 서버가 다시 연결되면 자동으로 올립니다.");
         return;
       }
-      const { error } = await supabaseClient.from("app_state").upsert({
-        id: REMOTE_ROW_ID,
-        data: sharedSnapshot(),
-        updated_at: new Date().toISOString()
-      });
-      if (error) reportSyncIssue("동기화 오류", "서버에 저장하지 못했습니다. 연결이 회복되기 전까지 다른 기기에는 보이지 않을 수 있습니다.", error);
-      else clearSyncIssue("동기화됨");
+      let error = null;
+      try {
+        ({ error } = await supabaseClient.from("app_state").upsert({
+          id: REMOTE_ROW_ID,
+          data: sharedSnapshot(),
+          updated_at: new Date().toISOString()
+        }));
+      } catch (err) {
+        error = err;
+      }
+      if (error) reportSyncIssue("동기화 오류", "서버에 저장하지 못했습니다. 이 기기에 먼저 저장하고, 서버가 다시 연결되면 자동으로 올립니다.", error);
+      else {
+        clearPendingSync();
+        clearSyncIssue("동기화됨");
+      }
     }
     async function initializeSupabase() {
       const config = window.DEVLOG_SUPABASE || {};
@@ -431,24 +486,51 @@
         reportSyncIssue("설정 필요", "온라인 동기화 설정을 불러오지 못했습니다. 이 기기의 임시 저장소만 사용 중입니다.");
         return;
       }
-      supabaseClient = window.supabase.createClient(config.url, config.anonKey);
+      supabaseClient ||= window.supabase.createClient(config.url, config.anonKey);
       setSyncStatus("연결 중");
-      const { data, error } = await supabaseClient.from("app_state").select("data").eq("id", REMOTE_ROW_ID).maybeSingle();
+      let data = null;
+      let error = null;
+      try {
+        ({ data, error } = await supabaseClient.from("app_state").select("data").eq("id", REMOTE_ROW_ID).maybeSingle());
+      } catch (err) {
+        error = err;
+      }
       if (error) {
-        reportSyncIssue("연결 오류", "온라인 동기화 서버에 접속하지 못했습니다. 서버가 paused 되었거나 네트워크 연결이 불안정할 수 있습니다.", error);
+        reportSyncIssue("연결 오류", "온라인 동기화 서버에 접속하지 못했습니다. 로컬 변경분은 이 기기에 보관되며, 재연결되면 자동으로 올립니다.", error);
         return;
       }
-      if (data?.data) applySharedState(data.data);
-      else await syncToSupabase();
-      supabaseClient.channel("devlog-duo-state")
+      if (data?.data) {
+        if (pendingRemoteSync) {
+          const merged = mergeSharedState(data.data, state);
+          applySharedState(merged);
+          await syncToSupabase();
+        } else {
+          applySharedState(data.data);
+        }
+      } else {
+        await syncToSupabase();
+      }
+      if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
+      realtimeChannel = supabaseClient.channel("devlog-duo-state")
         .on("postgres_changes", { event: "*", schema: "public", table: "app_state", filter: `id=eq.${REMOTE_ROW_ID}` }, payload => {
-          if (payload.new?.data) applySharedState(payload.new.data);
+          if (payload.new?.data) {
+            if (pendingRemoteSync) {
+              applySharedState(mergeSharedState(payload.new.data, state));
+              syncToSupabase();
+              return;
+            } else {
+              applySharedState(payload.new.data);
+            }
+          }
           clearSyncIssue("동기화됨");
         })
         .subscribe(status => {
-          if (status === "SUBSCRIBED") clearSyncIssue("실시간 연결됨");
+          if (status === "SUBSCRIBED") {
+            if (pendingRemoteSync) scheduleSyncRetry(100);
+            else clearSyncIssue("실시간 연결됨");
+          }
           if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
-            reportSyncIssue("실시간 오류", "실시간 공유 연결이 끊겼습니다. 새로고침하거나 잠시 후 다시 확인해주세요.");
+            reportSyncIssue("실시간 오류", "실시간 공유 연결이 끊겼습니다. 새 글은 로컬에 저장되고, 다시 연결되면 자동으로 서버에 올립니다.");
           }
         });
     }
@@ -819,6 +901,12 @@
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", syncMobileViewport);
     }
+    window.addEventListener("online", () => {
+      if (pendingRemoteSync) {
+        setSyncStatus("재동기화 중");
+        initializeSupabase();
+      }
+    });
     $("#settingsBtn").onclick = openSettings;
     $("#addProjectBtn").onclick = openProjectModal;
     $("#projectTitle").onclick = openProjectDetail;
