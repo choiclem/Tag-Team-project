@@ -31,3 +31,21 @@ begin
 exception
   when duplicate_object then null;
 end $$;
+
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('devlog-files', 'devlog-files', true, 52428800)
+on conflict (id) do update
+set public = true,
+    file_size_limit = 52428800;
+
+drop policy if exists "Anyone can read devlog files" on storage.objects;
+create policy "Anyone can read devlog files"
+on storage.objects for select
+to anon
+using (bucket_id = 'devlog-files');
+
+drop policy if exists "Anyone can upload devlog files" on storage.objects;
+create policy "Anyone can upload devlog files"
+on storage.objects for insert
+to anon
+with check (bucket_id = 'devlog-files');

@@ -76,6 +76,8 @@
     :root[data-theme="dark"] .user-choice button { background: #202020; color: var(--ink); }
     :root[data-theme="dark"] .note-area { background: #202020; color: var(--ink); border-color: var(--line); box-shadow: none; }
     :root[data-theme="dark"] .source-label { background: #292929; color: #c4c4c4; }
+    :root[data-theme="dark"] .file-link,
+    :root[data-theme="dark"] .preview-file { background: #202020; }
     :root[data-theme="dark"] .security-note { background: #40371f; color: #f0d494; }
     :root[data-theme="dark"] .delete-project:hover { background: #482b2b; color: #ffb0aa; }
     :root[data-theme="dark"] .pinned-stack { background: #253047; color: #e3ebff; }
@@ -159,9 +161,16 @@
     .entry-actions button { border: 0; background: transparent; color: var(--muted); font-size: 11px; }
     .bubble { background: color-mix(in srgb, var(--writer-color) 6%, white); border: 1px solid color-mix(in srgb, var(--writer-color) 12%, var(--line)); padding: 7px 9px; border-radius: 4px 9px 9px 9px; line-height: 1.42; font-size: 11px; white-space: pre-wrap; word-break: break-word; }
     .bubble img { display: block; max-width: min(100%, 440px); max-height: 280px; object-fit: cover; border-radius: 7px; margin-top: 6px; cursor: zoom-in; }
+    .file-list { display: grid; gap: 5px; margin-top: 6px; }
+    .file-link { display: flex; align-items: center; gap: 7px; max-width: 360px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.72); color: var(--ink); text-decoration: none; }
+    .file-link span { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    .file-link strong { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 11px; }
+    .file-link small { color: var(--muted); font-size: 9px; }
     .composer { border-top: 1px solid var(--line); padding: 7px 10px 9px; background: rgba(255,255,255,.45); }
     .preview { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
     .preview-item { position: relative; display: inline-block; }
+    .preview-file { position: relative; min-width: 150px; max-width: 220px; padding: 7px 28px 7px 8px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.78); font-size: 10px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .preview-file small { display: block; color: var(--muted); margin-top: 2px; }
     .preview img { width: 72px; height: 52px; object-fit: cover; border-radius: 8px; }
     .preview button { position: absolute; top: -6px; right: -6px; border: 0; background: var(--ink); color: white; border-radius: 50%; width: 20px; height: 20px; }
     .composer textarea { width: 100%; min-height: 48px; max-height: 120px; resize: vertical; border: 1px solid var(--line); background: white; border-radius: 9px; padding: 7px 9px; outline: none; line-height: 1.4; font-size: 11px; }
@@ -244,9 +253,10 @@
       .entry-actions { display: none; }
       .bubble { padding: 7px 8px; border-radius: 4px 10px 10px 10px; font-size: 11px; line-height: 1.42; }
       .bubble img { max-height: 190px; margin-top: 6px; border-radius: 8px; }
+      .file-link { max-width: 100%; padding: 5px 7px; border-radius: 7px; }
       .composer { padding: 6px 7px max(7px, env(safe-area-inset-bottom)); flex: 0 0 auto; background: white; }
       .composer textarea { min-height: 38px; max-height: 82px; padding: 7px 8px; border-radius: 9px; font-size: 11px; line-height: 1.38; }
-      .compose-tools { display: grid; grid-template-columns: 30px 1fr; gap: 5px; margin-top: 4px; }
+      .compose-tools { display: grid; grid-template-columns: 30px 30px 1fr; gap: 5px; margin-top: 4px; }
       .compose-tools select { padding: 5px 6px; font-size: 10px; }
       .send { margin-left: 0; width: 100%; padding: 6px; font-size: 10px; border-radius: 7px; }
       .preview { max-height: 54px; overflow-x: auto; flex-wrap: nowrap; padding-top: 3px; margin-bottom: 4px; }
@@ -320,6 +330,8 @@
         <div class="compose-tools">
           <button class="icon-btn" id="imageBtn" title="사진 첨부">＋</button>
           <input class="hidden" type="file" accept="image/*" multiple id="imageInput">
+          <button class="icon-btn" id="fileBtn" title="파일 첨부">F</button>
+          <input class="hidden" type="file" multiple id="fileInput">
           <button class="send" id="sendBtn">Post update</button>
         </div>
       </section>
@@ -348,6 +360,7 @@
     const STORE_KEY = "devlog-duo-v1";
     const PENDING_SYNC_KEY = "devlog-duo-pending-sync";
     const REMOTE_ROW_ID = "shared";
+    const FILE_BUCKET = "devlog-files";
     let supabaseClient = null;
     let realtimeChannel = null;
     let remoteSaveTimer = null;
@@ -365,6 +378,7 @@
     };
     let state = loadState();
     let pendingImages = [];
+    let pendingFiles = [];
     let pinnedCollapsed = localStorage.getItem("devlog-duo-pinned-collapsed") === "true";
     let deviceTheme = localStorage.getItem("devlog-duo-theme") || "light";
 
@@ -582,6 +596,15 @@
     function toast(msg) { const el = $("#toast"); el.textContent = msg; el.classList.remove("hidden"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.add("hidden"), 1800); }
     function initials(name) { return name.trim().split(/\s+/).map(x => x[0]).join("").slice(0,2).toUpperCase(); }
     function formatTime(ts) { return new Intl.DateTimeFormat("ko-KR", { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" }).format(ts); }
+    function formatFileSize(bytes = 0) {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    }
+    function renderFileLinks(files = []) {
+      if (!files.length) return "";
+      return `<div class="file-list">${files.map(file => `<a class="file-link" href="${escapeHtml(file.url)}" target="_blank" rel="noopener"><span>File</span><strong>${escapeHtml(file.name)}</strong><small>${formatFileSize(file.size)}</small></a>`).join("")}</div>`;
+    }
     function isToday(ts) {
       const date = new Date(ts);
       const today = new Date();
@@ -666,11 +689,12 @@
           previous.items.push(entry);
           previous.text = previous.items.map(item => item.text).filter(Boolean).join("\n");
           previous.images = previous.items.flatMap(item => [...(item.images || []), ...(item.image ? [item.image] : [])]);
+          previous.files = previous.items.flatMap(item => item.files || []);
           previous.createdAt = entry.createdAt;
           previous.lastId = entry.id;
           return groups;
         }
-        groups.push({ ...entry, items: [entry], images: [...(entry.images || []), ...(entry.image ? [entry.image] : [])], lastId: entry.id });
+        groups.push({ ...entry, items: [entry], images: [...(entry.images || []), ...(entry.image ? [entry.image] : [])], files: [...(entry.files || [])], lastId: entry.id });
         return groups;
       }, []);
       const renderEntry = e => {
@@ -683,7 +707,7 @@
             ${state.activeView === "today" ? `<span class="source-label">${escapeHtml(source)}</span>` : ""}
             <span class="entry-time">${formatTime(e.createdAt)}</span>${e.pinned ? `<span class="pin">★ pinned</span>` : ""}
             <span class="entry-actions"><button data-pin-group="${e.items.map(item => item.id).join(",")}">${e.pinned ? "Unpin" : "Pin"}</button><button data-delete-group="${e.items.map(item => item.id).join(",")}">Delete</button></span>
-          </div><div class="bubble">${escapeHtml(e.text)}${e.images.map(src => `<img src="${src}" alt="Attached image">`).join("")}</div>
+          </div><div class="bubble">${escapeHtml(e.text)}${e.images.map(src => `<img src="${src}" alt="Attached image">`).join("")}${renderFileLinks(e.files || [])}</div>
           </div>
         </article>`;
       };
@@ -728,9 +752,9 @@
     function chooseUser(id) { state.activeUser = id; saveState(); $("#userModal").classList.add("hidden"); render(); toast(`${state.users[id].name}으로 전환했습니다`); }
     function postEntry() {
       const text = $("#messageInput").value.trim();
-      if (!text && !pendingImages.length) return toast("내용 또는 사진을 추가해주세요");
+      if (!text && !pendingImages.length && !pendingFiles.length) return toast("내용, 사진 또는 파일을 추가해주세요");
       const targetView = state.activeView === "announcements" ? "announcements" : "project";
-      const entry = { id: crypto.randomUUID(), projectId: targetView === "announcements" ? "__announcements__" : state.activeProject, userId: state.activeUser, text, images: [...pendingImages], pinned: targetView === "announcements", createdAt: Date.now() };
+      const entry = { id: crypto.randomUUID(), projectId: targetView === "announcements" ? "__announcements__" : state.activeProject, userId: state.activeUser, text, images: [...pendingImages], files: [...pendingFiles], pinned: targetView === "announcements", createdAt: Date.now() };
       state.entries.push(entry);
       state.activeView = targetView;
       $("#searchInput").value = "";
@@ -740,14 +764,17 @@
       }
       $("#messageInput").value = "";
       pendingImages = [];
+      pendingFiles = [];
       renderImagePreview();
       render();
       toast("개발일지를 등록했습니다");
     }
     function renderImagePreview() {
       const box = $("#imagePreview");
-      box.innerHTML = pendingImages.map((src, i) => `<span class="preview-item"><img src="${src}" alt="첨부 미리보기"><button data-remove-image="${i}">×</button></span>`).join("");
-      box.classList.toggle("hidden", !pendingImages.length);
+      const imageHtml = pendingImages.map((src, i) => `<span class="preview-item"><img src="${src}" alt="첨부 미리보기"><button data-remove-image="${i}">×</button></span>`).join("");
+      const fileHtml = pendingFiles.map((file, i) => `<span class="preview-file">File ${escapeHtml(file.name)}<small>${formatFileSize(file.size)}</small><button data-remove-file="${i}">×</button></span>`).join("");
+      box.innerHTML = imageHtml + fileHtml;
+      box.classList.toggle("hidden", !pendingImages.length && !pendingFiles.length);
     }
     function compressImage(file) {
       return new Promise(resolve => {
@@ -779,6 +806,35 @@
         renderImagePreview();
       }
       if (images.length) toast("사진을 첨부했습니다");
+    }
+    function safeFileName(name) {
+      return name.normalize("NFKD").replace(/[^\w.\-]+/g, "_").replace(/^_+|_+$/g, "") || "file";
+    }
+    async function uploadFileAttachment(file) {
+      if (!supabaseClient) throw new Error("Supabase is not connected");
+      const path = `${new Date().toISOString().slice(0,10)}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+      const { error } = await supabaseClient.storage.from(FILE_BUCKET).upload(path, file, {
+        cacheControl: "3600",
+        upsert: false
+      });
+      if (error) throw error;
+      const { data } = supabaseClient.storage.from(FILE_BUCKET).getPublicUrl(path);
+      return { name: file.name, type: file.type || "application/octet-stream", size: file.size, path, url: data.publicUrl };
+    }
+    async function addGeneralFiles(files) {
+      const list = [...files].filter(file => file && !file.type.startsWith("image/"));
+      if (!list.length) return;
+      if (!supabaseClient) return reportSyncIssue("파일 오류", "파일 저장은 Supabase Storage 연결이 필요합니다. 연결 후 다시 시도해주세요.");
+      toast("파일을 업로드하는 중입니다");
+      try {
+        for (const file of list) {
+          pendingFiles.push(await uploadFileAttachment(file));
+          renderImagePreview();
+        }
+        toast("파일을 첨부했습니다");
+      } catch (error) {
+        reportSyncIssue("파일 오류", "파일을 저장하지 못했습니다. Storage bucket 설정을 확인해주세요.", error);
+      }
     }
     async function addPersonalNoteImages(files) {
       const images = [...files].filter(file => file && file.type.startsWith("image/"));
@@ -911,6 +967,8 @@
     $("#mobileUserSelect").addEventListener("change", e => chooseUser(e.target.value));
     $("#imageBtn").onclick = () => $("#imageInput").click();
     $("#imageInput").onchange = e => { addImageFiles(e.target.files); e.target.value = ""; };
+    $("#fileBtn").onclick = () => $("#fileInput").click();
+    $("#fileInput").onchange = e => { addGeneralFiles(e.target.files); e.target.value = ""; };
     $("#messageInput").addEventListener("paste", e => {
       const images = [...e.clipboardData.items].filter(item => item.type.startsWith("image/")).map(item => item.getAsFile()).filter(Boolean);
       if (!images.length) return;
@@ -919,8 +977,10 @@
     });
     $("#imagePreview").onclick = e => {
       const button = e.target.closest("[data-remove-image]");
-      if (!button) return;
-      pendingImages.splice(Number(button.dataset.removeImage), 1);
+      const fileButton = e.target.closest("[data-remove-file]");
+      if (!button && !fileButton) return;
+      if (button) pendingImages.splice(Number(button.dataset.removeImage), 1);
+      if (fileButton) pendingFiles.splice(Number(fileButton.dataset.removeFile), 1);
       renderImagePreview();
     };
     $("#personalNoteEditor").addEventListener("input", e => {
