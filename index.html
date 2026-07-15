@@ -57,6 +57,7 @@
     :root[data-theme="dark"] .form-group textarea,
     :root[data-theme="dark"] .form-group select,
     :root[data-theme="dark"] .mobile-bar select { background-color: #202020; color: var(--ink); }
+    :root[data-theme="dark"] .mobile-add-project { background: #202020; color: var(--ink); }
     :root[data-theme="dark"] .personal-note-card { background: #1f1f1f; border-color: #444; }
     :root[data-theme="dark"] .modal { background: #1b1b1b; }
     :root[data-theme="dark"] .user-card,
@@ -85,7 +86,7 @@
     :root[data-theme="dark"] .sync-indicator { background: rgba(23,23,23,.94); }
     button, input, textarea, select { font: inherit; color: inherit; }
     button { cursor: pointer; }
-    button, input, textarea, select, .panel, .bubble, .nav-item, .project-item, .shared-project, .user-switch, .btn, .icon-btn, .pinned-header {
+    button, input, textarea, select, .panel, .bubble, .nav-item, .project-item, .shared-project, .user-switch, .btn, .icon-btn, .pinned-header, .mobile-add-project {
       transition: background-color .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease, opacity .18s ease;
     }
     button:active { transform: translateY(1px); }
@@ -221,6 +222,7 @@
       .mobile-bar select { min-width: 0; border: 1px solid var(--line); background: white; border-radius: 8px; padding: 6px 7px; font-size: 10px; font-weight: 750; height: 30px; }
       #mobileProjectSelect { flex: 1; }
       #mobileUserSelect { width: 70px; color: var(--accent); }
+      .mobile-add-project { width: 30px; height: 30px; flex: 0 0 auto; border: 1px solid var(--line); background: white; border-radius: 8px; color: var(--accent); font-size: 17px; font-weight: 800; line-height: 1; display: grid; place-items: center; }
       .mobile-title { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 7px; background: var(--ink); color: white; font-size: 8px; font-weight: 900; flex: 0 0 auto; }
       .feed { padding: 8px 7px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
       .personal-note-view { padding: 7px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
@@ -261,6 +263,7 @@
     @media (max-width: 390px) {
       #mobileUserSelect { width: 64px; }
       .mobile-title { display: none; }
+      .mobile-add-project { width: 28px; }
       .feed { padding-inline: 6px; }
       .entry { grid-template-columns: 20px minmax(0, 1fr); }
       .entry .avatar { width: 20px; height: 20px; font-size: 7px; }
@@ -293,6 +296,7 @@
       <div class="mobile-bar">
         <div class="mobile-title">&lt;/&gt;</div>
         <select id="mobileProjectSelect" aria-label="프로젝트 선택"></select>
+        <button class="mobile-add-project" id="mobileAddProjectBtn" title="프로젝트 추가" aria-label="프로젝트 추가">+</button>
         <select id="mobileUserSelect" aria-label="작성자 선택"></select>
       </div>
       <header class="topbar">
@@ -954,6 +958,7 @@
     });
     $("#settingsBtn").onclick = openSettings;
     $("#addProjectBtn").onclick = openProjectModal;
+    $("#mobileAddProjectBtn").onclick = openProjectModal;
     $("#projectTitle").onclick = openProjectDetail;
     $("#formModal").addEventListener("click", async e => {
       if (e.target.id === "createProjectBtn") {
