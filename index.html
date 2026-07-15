@@ -825,7 +825,13 @@
       const { data, error } = await supabaseClient.functions.invoke("send-devlog-email", { body: payload });
       if (error) {
         console.error("Email send failed", error);
-        return reportSyncIssue("이메일 오류", "이메일을 보내지 못했습니다. Edge Function과 Resend 설정을 확인해주세요.", error);
+        let detail = "";
+        try {
+          const context = error.context;
+          const body = typeof context?.json === "function" ? await context.json() : null;
+          detail = body?.details?.message || body?.error || "";
+        } catch {}
+        return reportSyncIssue("이메일 오류", detail || "이메일을 보내지 못했습니다. Edge Function과 Resend 설정을 확인해주세요.", error);
       }
       toast(data?.message || "이메일을 보냈습니다");
     }
