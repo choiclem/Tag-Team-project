@@ -58,7 +58,6 @@
     :root[data-theme="dark"] .form-group select,
     :root[data-theme="dark"] .mobile-bar select { background-color: #202020; color: var(--ink); }
     :root[data-theme="dark"] .mobile-add-project { background: #202020; color: var(--ink); }
-    :root[data-theme="dark"] .email-today { background: #202020; color: var(--ink); }
     :root[data-theme="dark"] .personal-note-card { background: #1f1f1f; border-color: #444; }
     :root[data-theme="dark"] .modal { background: #1b1b1b; }
     :root[data-theme="dark"] .user-card,
@@ -87,7 +86,7 @@
     :root[data-theme="dark"] .sync-indicator { background: rgba(23,23,23,.94); }
     button, input, textarea, select { font: inherit; color: inherit; }
     button { cursor: pointer; }
-    button, input, textarea, select, .panel, .bubble, .nav-item, .project-item, .shared-project, .user-switch, .btn, .icon-btn, .pinned-header, .mobile-add-project, .email-today {
+    button, input, textarea, select, .panel, .bubble, .nav-item, .project-item, .shared-project, .user-switch, .btn, .icon-btn, .pinned-header, .mobile-add-project {
       transition: background-color .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease, opacity .18s ease;
     }
     button:active { transform: translateY(1px); }
@@ -169,7 +168,6 @@
     .composer textarea:focus, .search input:focus, .note-area:focus, .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
     .compose-tools { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
     .compose-tools select { border: 1px solid var(--line); border-radius: 8px; background: white; padding: 6px 7px; font-size: 10px; min-width: 0; }
-    .email-today { border: 1px solid var(--line); background: white; border-radius: 7px; padding: 6px 9px; color: var(--muted); font-weight: 750; font-size: 10px; }
     .send { margin-left: auto; border: 0; background: var(--ink); color: white; border-radius: 7px; padding: 6px 11px; font-weight: 700; font-size: 10px; }
     .rightbar h2 { font-size: 13px; margin: 0; letter-spacing: -.03em; }
     .rightbar { position: relative; padding-bottom: 58px; }
@@ -248,9 +246,8 @@
       .bubble img { max-height: 190px; margin-top: 6px; border-radius: 8px; }
       .composer { padding: 6px 7px max(7px, env(safe-area-inset-bottom)); flex: 0 0 auto; background: white; }
       .composer textarea { min-height: 38px; max-height: 82px; padding: 7px 8px; border-radius: 9px; font-size: 11px; line-height: 1.38; }
-      .compose-tools { display: grid; grid-template-columns: 30px 58px 1fr; gap: 5px; margin-top: 4px; }
+      .compose-tools { display: grid; grid-template-columns: 30px 1fr; gap: 5px; margin-top: 4px; }
       .compose-tools select { padding: 5px 6px; font-size: 10px; }
-      .email-today { padding: 6px 4px; font-size: 10px; }
       .send { margin-left: 0; width: 100%; padding: 6px; font-size: 10px; border-radius: 7px; }
       .preview { max-height: 54px; overflow-x: auto; flex-wrap: nowrap; padding-top: 3px; margin-bottom: 4px; }
       .preview img { width: 56px; height: 42px; }
@@ -323,7 +320,6 @@
         <div class="compose-tools">
           <button class="icon-btn" id="imageBtn" title="사진 첨부">＋</button>
           <input class="hidden" type="file" accept="image/*" multiple id="imageInput">
-          <button class="email-today" id="emailTodayBtn" title="오늘 업데이트 이메일 보내기">Email</button>
           <button class="send" id="sendBtn">Post update</button>
         </div>
       </section>
@@ -586,7 +582,6 @@
     function toast(msg) { const el = $("#toast"); el.textContent = msg; el.classList.remove("hidden"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.add("hidden"), 1800); }
     function initials(name) { return name.trim().split(/\s+/).map(x => x[0]).join("").slice(0,2).toUpperCase(); }
     function formatTime(ts) { return new Intl.DateTimeFormat("ko-KR", { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" }).format(ts); }
-    function formatEmailTime(ts) { return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(ts); }
     function isToday(ts) {
       const date = new Date(ts);
       const today = new Date();
@@ -596,10 +591,6 @@
     }
     function activeUser() { return state.users[state.activeUser] || state.users.clem; }
     function currentProject() { return state.projects.find(p => p.id === state.activeProject) || state.projects[0]; }
-    function entrySourceName(entry) {
-      if (entry.projectId === "__announcements__") return "공동 노트";
-      return state.projects.find(p => p.id === entry.projectId)?.name || "Unknown project";
-    }
     function applyTheme(theme) {
       deviceTheme = theme;
       document.documentElement.dataset.theme = theme;
@@ -799,42 +790,6 @@
       renderPersonalNote();
       toast("개인 노트에 사진을 추가했습니다");
     }
-    async function sendTodayEmail() {
-      if (!supabaseClient) return reportSyncIssue("이메일 오류", "온라인 서버 연결이 필요합니다. Supabase 연결 후 다시 시도해주세요.");
-      const todayEntries = state.entries
-        .filter(entry => isToday(entry.createdAt))
-        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-      if (!todayEntries.length) return toast("오늘 보낼 업데이트가 없습니다");
-      const savedTo = localStorage.getItem("devlog-duo-email-to") || "";
-      const to = prompt("받을 이메일 주소를 입력하세요", savedTo);
-      if (!to) return;
-      localStorage.setItem("devlog-duo-email-to", to.trim());
-      toast("이메일을 보내는 중입니다");
-      const payload = {
-        to: to.trim(),
-        subject: `Devlog Duo Today's updates - ${new Date().toLocaleDateString("ko-KR")}`,
-        sentBy: activeUser().name,
-        entries: todayEntries.map(entry => ({
-          source: entrySourceName(entry),
-          author: state.users[entry.userId]?.name || entry.userId || "Unknown",
-          text: entry.text || "",
-          imageCount: entry.images?.length || 0,
-          createdAt: formatEmailTime(entry.createdAt)
-        }))
-      };
-      const { data, error } = await supabaseClient.functions.invoke("send-devlog-email", { body: payload });
-      if (error) {
-        console.error("Email send failed", error);
-        let detail = "";
-        try {
-          const context = error.context;
-          const body = typeof context?.json === "function" ? await context.json() : null;
-          detail = body?.details?.message || body?.error || "";
-        } catch {}
-        return reportSyncIssue("이메일 오류", detail || "이메일을 보내지 못했습니다. Edge Function과 Resend 설정을 확인해주세요.", error);
-      }
-      toast(data?.message || "이메일을 보냈습니다");
-    }
     function openProjectModal() {
       $("#formModalContent").innerHTML = `<h2>새 공유 프로젝트</h2><p>프로젝트별로 개발일지를 나눠 관리할 수 있습니다.</p>
         <div class="form-group"><label>Project name</label><input id="newProjectName" placeholder="예: Mobile App v2"></div>
@@ -1004,7 +959,6 @@
     $("#settingsBtn").onclick = openSettings;
     $("#addProjectBtn").onclick = openProjectModal;
     $("#mobileAddProjectBtn").onclick = openProjectModal;
-    $("#emailTodayBtn").onclick = sendTodayEmail;
     $("#projectTitle").onclick = openProjectDetail;
     $("#formModal").addEventListener("click", async e => {
       if (e.target.id === "createProjectBtn") {
