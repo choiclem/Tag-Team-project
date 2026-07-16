@@ -59,6 +59,8 @@
     :root[data-theme="dark"] .mobile-bar select { background-color: #202020; color: var(--ink); }
     :root[data-theme="dark"] .mobile-add-project { background: #202020; color: var(--ink); }
     :root[data-theme="dark"] .personal-note-card { background: #1f1f1f; border-color: #444; }
+    :root[data-theme="dark"] .secret-note-panel { background: #202020; border-color: #4a4652; }
+    :root[data-theme="dark"] .secret-note-open { background: #2b2530; border-color: #594d61; color: #d8c2e2; }
     :root[data-theme="dark"] .modal { background: #1b1b1b; }
     :root[data-theme="dark"] .user-card,
     :root[data-theme="dark"] .nav-item:hover,
@@ -142,13 +144,22 @@
     .main.view-switching .topbar, .main.view-switching .feed, .main.view-switching .personal-note-view, .main.view-switching .composer { opacity: 0; transform: translateY(3px); }
     .personal-note-view { flex: 1; overflow: auto; padding: 12px; background: rgba(255,255,255,.34); scroll-behavior: smooth; }
     .personal-note-card { max-width: 760px; min-height: 100%; margin: 0 auto; padding: 14px; background: #fffdf3; border: 1px solid #e3dfc9; border-radius: 10px; box-shadow: 0 8px 20px rgba(44,42,27,.045); }
-    .personal-note-card h2 { margin: 0 0 5px; font-size: 16px; letter-spacing: -.04em; }
+    .personal-note-title-row { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+    .personal-note-card h2 { margin: 0; font-size: 16px; letter-spacing: -.04em; }
+    .secret-note-open { margin-left: 2px; padding: 4px 7px; border: 1px solid #b9a9c2; border-radius: 7px; background: #f4eef7; color: #684d75; font-size: 9px; font-weight: 850; }
     .personal-note-card p { margin: 0 0 18px; color: var(--muted); font-size: 12px; }
     .personal-note-editor { width: 100%; min-height: calc(100vh - 210px); resize: none; border: 0; outline: 0; background: transparent; line-height: 1.65; font-size: 13px; }
     .personal-note-images { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 9px; margin-bottom: 15px; }
     .personal-note-image { position: relative; }
     .personal-note-image img { width: 100%; height: 110px; object-fit: cover; border-radius: 10px; cursor: zoom-in; }
     .personal-note-image button { position: absolute; top: 5px; right: 5px; width: 23px; height: 23px; border: 0; border-radius: 50%; background: rgba(20,26,22,.8); color: white; }
+    .secret-note-panel { margin-top: 10px; padding: 10px; border: 1px solid #d7cddd; border-radius: 9px; background: #fbf7fc; }
+    .secret-note-head { display: flex; align-items: center; gap: 5px; margin-bottom: 7px; }
+    .secret-note-head strong { flex: 1; color: #684d75; font-size: 11px; }
+    .secret-note-head span { color: var(--muted); font-size: 9px; }
+    .secret-note-head button { padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; font-size: 9px; }
+    .secret-note-editor { width: 100%; min-height: 230px; resize: vertical; border: 0; outline: 0; background: transparent; color: var(--ink); line-height: 1.6; font-size: 12px; }
+    .personal-note-card.secret-open .personal-note-editor { min-height: 260px; }
     .calendar-view { flex: 1; min-height: 0; overflow: auto; padding: 12px; background: rgba(255,255,255,.34); }
     .calendar-layout { width: min(900px, 100%); min-height: 100%; margin: 0 auto; display: grid; grid-template-columns: minmax(360px, 1.35fr) minmax(250px, .8fr); gap: 10px; }
     .calendar-card, .calendar-note-card { padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.8); }
@@ -295,7 +306,10 @@
       .personal-note-view { padding: 7px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
       .personal-note-card { padding: 10px; border-radius: 10px; box-shadow: none; }
       .personal-note-card h2 { font-size: 14px; }
+      .secret-note-open { padding: 3px 6px; font-size: 8px; }
       .personal-note-editor { min-height: calc(var(--app-height) - 112px); font-size: 12px; line-height: 1.5; }
+      .personal-note-card.secret-open .personal-note-editor { min-height: 210px; }
+      .secret-note-editor { min-height: 180px; }
       .personal-note-images { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; margin-bottom: 10px; }
       .personal-note-image img { height: 82px; border-radius: 8px; }
       .calendar-view { padding: 7px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
@@ -390,9 +404,13 @@
       <section class="feed" id="feed"></section>
       <section class="personal-note-view hidden" id="personalNoteView">
         <div class="personal-note-card">
-          <h2 id="personalNoteTitle">Personal note</h2>
+          <div class="personal-note-title-row"><h2 id="personalNoteTitle">Personal note</h2><button class="secret-note-open" id="secretNoteBtn">비밀 노트</button></div>
           <div class="personal-note-images hidden" id="personalNoteImages"></div>
           <textarea class="personal-note-editor" id="personalNoteEditor" placeholder="생각나는 내용을 자유롭게 적으세요..."></textarea>
+          <section class="secret-note-panel hidden" id="secretNotePanel">
+            <div class="secret-note-head"><strong>비밀 노트</strong><span id="secretNoteStatus"></span><button id="changeSecretPasswordBtn">비밀번호 변경</button><button id="lockSecretNoteBtn">잠금</button></div>
+            <textarea class="secret-note-editor" id="secretNoteEditor" placeholder="암호화해서 보관할 내용을 적으세요..."></textarea>
+          </section>
         </div>
       </section>
       <section class="calendar-view hidden" id="calendarView">
@@ -478,6 +496,9 @@
     let viewSwitchTimer = null;
     let calendarSelectedDate = /^\d{4}-\d{2}-\d{2}$/.test(localStorage.getItem(CALENDAR_DATE_KEY) || "") ? localStorage.getItem(CALENDAR_DATE_KEY) : localDateKey(new Date());
     let calendarCursor = dateFromKey(calendarSelectedDate);
+    let secretNoteSession = null;
+    let secretNoteSaveTimer = null;
+    let secretNoteSaveQueue = Promise.resolve();
     let deviceTheme = localStorage.getItem("devlog-duo-theme") || "light";
 
     const $ = s => document.querySelector(s);
@@ -1015,6 +1036,19 @@
       const images = user.personalImages || [];
       $("#personalNoteImages").innerHTML = images.map((src, i) => `<div class="personal-note-image"><img src="${src}" alt="개인 노트 이미지"><button data-delete-note-image="${i}">×</button></div>`).join("");
       $("#personalNoteImages").classList.toggle("hidden", !images.length);
+      const secretOpen = secretNoteSession?.userId === user.id;
+      $(".personal-note-card").classList.toggle("secret-open", secretOpen);
+      $("#secretNotePanel").classList.toggle("hidden", !secretOpen);
+      $("#secretNoteBtn").textContent = user.encryptedSecretNote ? (secretOpen ? "비밀 노트 열림" : "비밀 노트") : "비밀 노트 설정";
+      if (secretOpen) {
+        const editor = $("#secretNoteEditor");
+        const keepEditing = document.activeElement === editor;
+        if (!keepEditing) editor.value = secretNoteSession.text;
+        $("#secretNoteStatus").textContent = secretNoteSession.dirty ? "저장 중" : "암호화됨";
+      } else {
+        $("#secretNoteEditor").value = "";
+        $("#secretNoteStatus").textContent = "";
+      }
     }
     function renderRightbar() {
       $("#projectCount").textContent = `${state.projects.length} folders`;
@@ -1051,8 +1085,9 @@
     function renderUserChoices() {
       $("#userChoices").innerHTML = Object.values(state.users).map(u => `<button data-choose-user="${u.id}"><span class="avatar" style="background:${u.color}">${initials(u.name)}</span><strong>${escapeHtml(u.name)}</strong></button>`).join("");
     }
-    function chooseUser(id) { state.activeUser = id; saveState(); $("#userModal").classList.add("hidden"); render(); toast(`${state.users[id].name}으로 전환했습니다`); }
+    function chooseUser(id) { lockSecretNote(false); state.activeUser = id; saveState(); $("#userModal").classList.add("hidden"); render(); toast(`${state.users[id].name}으로 전환했습니다`); }
     function switchView(update) {
+      lockSecretNote(false);
       clearTimeout(viewSwitchTimer);
       const main = $(".main");
       main.classList.add("view-switching");
@@ -1271,6 +1306,77 @@
       const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, base64ToBytes(payload.data));
       return new TextDecoder().decode(decrypted);
     }
+    function queueSecretNoteSave(session = secretNoteSession) {
+      if (!session?.dirty) return secretNoteSaveQueue;
+      const snapshot = { userId: session.userId, password: session.password, text: session.text };
+      session.dirty = false;
+      secretNoteSaveQueue = secretNoteSaveQueue.catch(() => {}).then(async () => {
+        const user = state.users[snapshot.userId];
+        if (!user) return;
+        user.encryptedSecretNote = await encryptProjectNote(snapshot.text, snapshot.password);
+        if (!saveState(true)) throw new Error("암호화된 노트를 저장하지 못했습니다");
+        if (secretNoteSession?.userId === snapshot.userId && secretNoteSession.text === snapshot.text) {
+          $("#secretNoteStatus").textContent = "암호화 저장됨";
+        }
+      }).catch(error => {
+        console.error("비밀 노트 저장 오류", error);
+        if (secretNoteSession?.userId === snapshot.userId) {
+          secretNoteSession.dirty = true;
+          $("#secretNoteStatus").textContent = "저장 실패";
+        }
+        toast("비밀 노트를 저장하지 못했습니다");
+      });
+      return secretNoteSaveQueue;
+    }
+    function lockSecretNote(renderView = true) {
+      clearTimeout(secretNoteSaveTimer);
+      queueSecretNoteSave(secretNoteSession);
+      secretNoteSession = null;
+      $("#secretNoteEditor").value = "";
+      $("#secretNotePanel").classList.add("hidden");
+      $(".personal-note-card").classList.remove("secret-open");
+      if (renderView) renderPersonalNote();
+    }
+    function closeFormModal() {
+      $$('#formModal input[type="password"]').forEach(input => { input.value = ""; });
+      delete $("#formModalContent").dataset.notePassword;
+      delete $("#formModalContent").dataset.secretNoteUser;
+      delete $("#formModalContent").dataset.editProjectId;
+      $("#formModal").classList.add("hidden");
+    }
+    async function openSecretNoteAccess() {
+      await secretNoteSaveQueue;
+      const user = state.users[state.noteUser] || activeUser();
+      if (secretNoteSession?.userId === user.id) {
+        $("#secretNoteEditor").focus();
+        return;
+      }
+      if (!user.encryptedSecretNote) {
+        $("#formModalContent").innerHTML = `<h2>비밀 노트 설정</h2><p>${escapeHtml(user.name)}의 비밀 노트에 사용할 비밀번호를 처음 설정합니다.</p>
+          <div class="form-group"><label>새 비밀번호</label><input id="newSecretPassword" type="password" autocomplete="new-password"></div>
+          <div class="form-group"><label>비밀번호 확인</label><input id="confirmSecretPassword" type="password" autocomplete="new-password"></div>
+          <div class="security-note">비밀번호는 저장되지 않습니다. 잊어버리면 암호화된 노트를 복구할 수 없습니다.</div>
+          <div class="form-actions"><button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="setupSecretNoteBtn">Set password</button></div>`;
+      } else {
+        $("#formModalContent").innerHTML = `<h2>비밀 노트 열기</h2><p>${escapeHtml(user.name)}의 비밀 노트 비밀번호를 입력하세요.</p>
+          <div class="form-group"><label>비밀번호</label><input id="secretNotePassword" type="password" autocomplete="current-password"></div>
+          <div class="form-actions"><button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="unlockSecretNoteBtn">Unlock</button></div>`;
+      }
+      $("#formModalContent").dataset.secretNoteUser = user.id;
+      $("#formModal").classList.remove("hidden");
+      setTimeout(() => $(user.encryptedSecretNote ? "#secretNotePassword" : "#newSecretPassword")?.focus(), 0);
+    }
+    function openSecretPasswordChange() {
+      if (!secretNoteSession) return;
+      const user = state.users[secretNoteSession.userId];
+      $("#formModalContent").innerHTML = `<h2>비밀번호 변경</h2><p>${escapeHtml(user.name)} 비밀 노트의 새 비밀번호를 설정합니다.</p>
+        <div class="form-group"><label>새 비밀번호</label><input id="changedSecretPassword" type="password" autocomplete="new-password"></div>
+        <div class="form-group"><label>비밀번호 확인</label><input id="confirmChangedSecretPassword" type="password" autocomplete="new-password"></div>
+        <div class="form-actions"><button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="saveSecretPasswordBtn">Change password</button></div>`;
+      $("#formModalContent").dataset.secretNoteUser = user.id;
+      $("#formModal").classList.remove("hidden");
+      setTimeout(() => $("#changedSecretPassword")?.focus(), 0);
+    }
     async function openProjectDetail() {
       if (state.activeView !== "project") return;
       const password = prompt("프로젝트 노트 비밀번호 1234를 입력하세요");
@@ -1334,7 +1440,7 @@
         user.personalImages.splice(Number(t.dataset.deleteNoteImage), 1);
         saveState(true); renderPersonalNote();
       }
-      if (t.dataset.closeModal !== undefined || t.id === "formModal") $("#formModal").classList.add("hidden");
+      if (t.dataset.closeModal !== undefined || t.id === "formModal") closeFormModal();
       if (t.matches(".bubble img, .personal-note-image img")) { $("#lightbox img").src = t.src; $("#lightbox").classList.remove("hidden"); }
     });
     $("#sendBtn").onclick = postEntry;
@@ -1386,6 +1492,17 @@
       if (!images.length) return;
       e.preventDefault();
       addPersonalNoteImages(images);
+    });
+    $("#secretNoteBtn").onclick = openSecretNoteAccess;
+    $("#changeSecretPasswordBtn").onclick = openSecretPasswordChange;
+    $("#lockSecretNoteBtn").onclick = () => lockSecretNote(true);
+    $("#secretNoteEditor").addEventListener("input", e => {
+      if (!secretNoteSession || secretNoteSession.userId !== (state.users[state.noteUser] || activeUser()).id) return;
+      secretNoteSession.text = e.target.value;
+      secretNoteSession.dirty = true;
+      $("#secretNoteStatus").textContent = "암호화 저장 중";
+      clearTimeout(secretNoteSaveTimer);
+      secretNoteSaveTimer = setTimeout(() => queueSecretNoteSave(secretNoteSession), 600);
     });
     $("#calendarNoteEditor").addEventListener("input", e => {
       const key = e.target.dataset.calendarNoteDate || calendarSelectedDate;
@@ -1440,6 +1557,44 @@
         project.desc = $("#editProjectDesc").value.trim() || "Shared project";
         project.color = $("#editProjectColor").value;
         saveState(true); $("#formModal").classList.add("hidden"); render(); toast("프로젝트를 수정했습니다");
+      }
+      if (e.target.id === "setupSecretNoteBtn") {
+        const user = state.users[$("#formModalContent").dataset.secretNoteUser];
+        const password = $("#newSecretPassword").value;
+        const confirmation = $("#confirmSecretPassword").value;
+        if (!user) return toast("사용자를 찾지 못했습니다");
+        if (password.length < 4) return toast("비밀번호는 4자 이상 입력해주세요");
+        if (password !== confirmation) return toast("비밀번호 확인이 일치하지 않습니다");
+        user.encryptedSecretNote = await encryptProjectNote("", password);
+        secretNoteSession = { userId: user.id, password, text: "", dirty: false };
+        saveState(true); closeFormModal(); renderPersonalNote(); $("#secretNoteEditor").focus(); toast("비밀 노트를 설정했습니다");
+      }
+      if (e.target.id === "unlockSecretNoteBtn") {
+        const user = state.users[$("#formModalContent").dataset.secretNoteUser];
+        const password = $("#secretNotePassword").value;
+        if (!user?.encryptedSecretNote) return toast("비밀 노트를 찾지 못했습니다");
+        try {
+          const text = await decryptProjectNote(user.encryptedSecretNote, password);
+          secretNoteSession = { userId: user.id, password, text, dirty: false };
+          closeFormModal(); renderPersonalNote(); $("#secretNoteEditor").focus();
+        } catch {
+          toast("비밀번호가 맞지 않습니다");
+        }
+      }
+      if (e.target.id === "saveSecretPasswordBtn") {
+        const password = $("#changedSecretPassword").value;
+        const confirmation = $("#confirmChangedSecretPassword").value;
+        const userId = $("#formModalContent").dataset.secretNoteUser;
+        if (!secretNoteSession || secretNoteSession.userId !== userId) return toast("비밀 노트를 다시 열어주세요");
+        if (password.length < 4) return toast("비밀번호는 4자 이상 입력해주세요");
+        if (password !== confirmation) return toast("비밀번호 확인이 일치하지 않습니다");
+        clearTimeout(secretNoteSaveTimer);
+        await queueSecretNoteSave(secretNoteSession);
+        const user = state.users[userId];
+        user.encryptedSecretNote = await encryptProjectNote(secretNoteSession.text, password);
+        secretNoteSession.password = password;
+        secretNoteSession.dirty = false;
+        saveState(true); closeFormModal(); renderPersonalNote(); toast("비밀번호를 변경했습니다");
       }
       if (e.target.id === "saveProjectDetailBtn") {
         const project = currentProject();
