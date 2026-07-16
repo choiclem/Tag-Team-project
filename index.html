@@ -241,8 +241,12 @@
     .shared-project { width: 100%; display: flex; align-items: center; gap: 7px; border: 1px solid var(--line); background: white; padding: 6px 7px; border-radius: 8px; margin-bottom: 4px; text-align: left; }
     .shared-project.active { border-color: var(--accent); background: var(--accent-soft); }
     .shared-project-wrap { position: relative; }
-    .shared-project-wrap .shared-project { padding-right: 35px; }
-    .delete-project { position: absolute; top: 6px; right: 6px; width: 23px; height: 23px; border: 0; background: transparent; color: var(--muted); border-radius: 7px; opacity: .45; }
+    .shared-project-wrap .shared-project { padding-right: 70px; }
+    .project-box-actions { position: absolute; top: 6px; right: 6px; display: flex; align-items: center; gap: 2px; }
+    .edit-project, .delete-project { height: 23px; border: 0; background: transparent; color: var(--muted); border-radius: 7px; opacity: .55; }
+    .edit-project { padding: 0 5px; font-size: 8px; font-weight: 900; letter-spacing: .04em; }
+    .delete-project { width: 23px; }
+    .edit-project:hover { opacity: 1; color: var(--accent); background: var(--accent-soft); }
     .delete-project:hover { opacity: 1; color: #a33; background: #f7e7e4; }
     .folder-icon { font-size: 17px; }
     .shared-project strong { display: block; font-size: 12px; }
@@ -1018,8 +1022,19 @@
         const count = state.entries.filter(e => e.projectId === p.id).length;
         return `<div class="shared-project-wrap"><button class="shared-project ${state.activeView === "project" && p.id === state.activeProject ? "active" : ""}" data-project="${p.id}">
           <span class="folder-icon" style="color:${p.color}">▰</span><span><strong>${escapeHtml(p.name)}</strong><small>${count} updates · ${escapeHtml(p.desc)}</small></span></button>
-          <button class="delete-project" data-delete-project="${p.id}" title="프로젝트 삭제">×</button></div>`;
+          <span class="project-box-actions"><button class="edit-project" data-edit-project="${p.id}" title="프로젝트 수정">EDIT</button><button class="delete-project" data-delete-project="${p.id}" title="프로젝트 삭제">×</button></span></div>`;
       }).join("");
+    }
+    function openEditProjectModal(id) {
+      const project = state.projects.find(item => item.id === id);
+      if (!project) return;
+      $("#formModalContent").innerHTML = `<h2>Edit project</h2><p>프로젝트 이름, 설명과 폴더 색상을 변경합니다.</p>
+        <div class="form-group"><label>Project name</label><input id="editProjectName" value="${escapeHtml(project.name)}"></div>
+        <div class="form-group"><label>Description</label><input id="editProjectDesc" value="${escapeHtml(project.desc || "")}"></div>
+        <div class="form-group"><label>Folder color</label><input id="editProjectColor" type="color" value="${escapeHtml(project.color || "#4d82a8")}"></div>
+        <div class="form-actions"><button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="saveProjectEditBtn">Save changes</button></div>`;
+      $("#formModalContent").dataset.editProjectId = id;
+      $("#formModal").classList.remove("hidden");
     }
     function deleteProject(id) {
       if (state.projects.length <= 1) return toast("프로젝트는 최소 한 개가 필요합니다");
@@ -1290,6 +1305,7 @@
       if (t.dataset.chooseUser) chooseUser(t.dataset.chooseUser);
       if (t.dataset.announcements !== undefined) switchView(() => { state.activeView = "announcements"; });
       if (t.dataset.project) switchView(() => { state.activeProject = t.dataset.project; state.activeView = "project"; });
+      if (t.dataset.editProject) openEditProjectModal(t.dataset.editProject);
       if (t.dataset.deleteProject) deleteProject(t.dataset.deleteProject);
       if (t.dataset.personalNote) switchView(() => { state.noteUser = t.dataset.personalNote; state.activeView = "personalNote"; });
       if (t.dataset.view) switchView(() => { state.activeView = t.dataset.view; });
@@ -1414,6 +1430,16 @@
       if (e.target.id === "createProjectBtn") {
         const name = $("#newProjectName").value.trim(); if (!name) return toast("프로젝트 이름을 입력해주세요");
         const id = crypto.randomUUID(); state.projects.push({ id, name, desc: $("#newProjectDesc").value.trim() || "Shared project", color: $("#newProjectColor").value }); state.activeProject = id; state.activeView = "project"; saveState(true); $("#formModal").classList.add("hidden"); render();
+      }
+      if (e.target.id === "saveProjectEditBtn") {
+        const project = state.projects.find(item => item.id === $("#formModalContent").dataset.editProjectId);
+        const name = $("#editProjectName").value.trim();
+        if (!project) return toast("프로젝트를 찾지 못했습니다");
+        if (!name) return toast("프로젝트 이름을 입력해주세요");
+        project.name = name;
+        project.desc = $("#editProjectDesc").value.trim() || "Shared project";
+        project.color = $("#editProjectColor").value;
+        saveState(true); $("#formModal").classList.add("hidden"); render(); toast("프로젝트를 수정했습니다");
       }
       if (e.target.id === "saveProjectDetailBtn") {
         const project = currentProject();
