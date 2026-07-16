@@ -362,7 +362,6 @@
       <div class="section-title">Views</div>
       <button class="nav-item" data-view="today"><span>◷</span><span>Today's updates</span><span class="count" id="todayCount">0</span></button>
       <button class="nav-item" data-view="pinned"><span>★</span><span>Pinned updates</span><span class="count" id="pinnedCount">0</span></button>
-      <button class="nav-item" data-view="all"><span>⌘</span><span>All activity</span><span class="count" id="allCount">0</span></button>
       <div class="user-card">
         <div class="avatar" id="activeAvatar">C</div>
         <div><strong id="activeName">Clem</strong><small>Current writer</small></div>
@@ -465,6 +464,7 @@
     };
     let state = loadState();
     restoreLastLocation();
+    if (state.activeView === "all") state.activeView = "today";
     let pendingImages = [];
     let pendingFiles = [];
     let pinnedCollapsed = localStorage.getItem("devlog-duo-pinned-collapsed") === "true";
@@ -854,7 +854,6 @@
       }).join("");
       $("#pinnedCount").textContent = state.entries.filter(e => e.pinned).length;
       $("#todayCount").textContent = state.entries.filter(e => isToday(e.createdAt)).length;
-      $("#allCount").textContent = state.entries.length;
       $("#calendarNoteCount").textContent = Object.values(state.calendarNotes || {}).filter(note => note?.trim()).length;
     }
     function renderMobileBar() {
@@ -871,7 +870,7 @@
     }
     function renderHeader() {
       const project = currentProject();
-      const labels = { project: project.name, announcements: "공동 노트", today: "Today's updates", all: "All activity", pinned: "Pinned updates", calendar: "Calendar", personalNote: `${state.users[state.noteUser]?.name || ""} 개인 노트` };
+      const labels = { project: project.name, announcements: "공동 노트", today: "Today's updates", pinned: "Pinned updates", calendar: "Calendar", personalNote: `${state.users[state.noteUser]?.name || ""} 개인 노트` };
       $("#projectTitle").textContent = labels[state.activeView] || project.name;
       $("#projectTitle").classList.toggle("clickable", state.activeView === "project");
       $("#projectTitle").title = state.activeView === "project" ? "프로젝트 상세정보 열기" : "";
