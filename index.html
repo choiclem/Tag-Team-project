@@ -78,6 +78,7 @@
     :root[data-theme="dark"] .user-choice button { background: #202020; color: var(--ink); }
     :root[data-theme="dark"] .note-area { background: #202020; color: var(--ink); border-color: var(--line); box-shadow: none; }
     :root[data-theme="dark"] .source-label { background: #292929; color: #c4c4c4; }
+    :root[data-theme="dark"] .bubble-link { color: color-mix(in srgb, var(--writer-color) 55%, #dce8ff); }
     :root[data-theme="dark"] .today-group-head { background: color-mix(in srgb, #202020 93%, var(--project-color)); }
     :root[data-theme="dark"] .file-link,
     :root[data-theme="dark"] .preview-file { background: #202020; }
@@ -223,6 +224,8 @@
     .entry:hover .entry-actions { opacity: 1; }
     .entry-actions button { border: 0; background: transparent; color: var(--muted); font-size: 11px; }
     .bubble { background: color-mix(in srgb, var(--writer-color) 6%, white); border: 1px solid color-mix(in srgb, var(--writer-color) 12%, var(--line)); padding: 7px 9px; border-radius: 4px 9px 9px 9px; line-height: 1.42; font-size: 11px; white-space: pre-wrap; word-break: break-word; }
+    .bubble-link { color: color-mix(in srgb, var(--writer-color) 82%, #174b91); font-weight: 700; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+    .bubble-link:hover { color: var(--writer-color); text-decoration-thickness: 2px; }
     .bubble img { display: block; max-width: min(100%, 440px); max-height: 280px; object-fit: cover; border-radius: 7px; margin-top: 6px; cursor: zoom-in; }
     .file-list { display: grid; gap: 5px; margin-top: 6px; }
     .file-item { display: flex; align-items: center; gap: 5px; max-width: 430px; }
@@ -504,6 +507,22 @@
     const $ = s => document.querySelector(s);
     const $$ = s => [...document.querySelectorAll(s)];
     const escapeHtml = str => String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+    function renderTextWithLinks(value) {
+      const text = String(value || "");
+      const pattern = /(?:https?:\/\/|www\.)[^\s<>"']+/gi;
+      let html = "";
+      let cursor = 0;
+      for (const match of text.matchAll(pattern)) {
+        let url = match[0];
+        const trailing = url.match(/[)\]},.!?;:]+$/)?.[0] || "";
+        if (trailing) url = url.slice(0, -trailing.length);
+        html += escapeHtml(text.slice(cursor, match.index));
+        const href = url.toLowerCase().startsWith("www.") ? `https://${url}` : url;
+        html += `<a class="bubble-link" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>${escapeHtml(trailing)}`;
+        cursor = match.index + match[0].length;
+      }
+      return html + escapeHtml(text.slice(cursor));
+    }
     function readStoredArray(key) {
       try {
         const value = JSON.parse(localStorage.getItem(key));
@@ -954,7 +973,7 @@
             ${state.activeView === "today" ? `<span class="source-label">${escapeHtml(source)}</span>` : ""}
             <span class="entry-time">${formatTime(e.createdAt)}</span>${renderDeliveryStatus(e.items)}${e.pinned ? `<span class="pin">★ pinned</span>` : ""}
             <span class="entry-actions"><button data-pin-group="${e.items.map(item => item.id).join(",")}">${e.pinned ? "Unpin" : "Pin"}</button><button data-delete-group="${e.items.map(item => item.id).join(",")}">Delete</button></span>
-          </div><div class="bubble">${escapeHtml(e.text)}${e.images.map(src => `<img src="${src}" alt="Attached image">`).join("")}${renderFileLinks(e.files || [])}</div>
+          </div><div class="bubble">${renderTextWithLinks(e.text)}${e.images.map(src => `<img src="${src}" alt="Attached image">`).join("")}${renderFileLinks(e.files || [])}</div>
           </div>
         </article>`;
       };
