@@ -87,6 +87,11 @@
     :root[data-theme="dark"] .pinned-header:hover { background: #303d58; }
     :root[data-theme="dark"] .sync-warning { background: #3a2f18; border-color: #735b22; color: #ffe6a3; }
     :root[data-theme="dark"] .personal-note-view { background: rgba(0,0,0,.12); }
+    :root[data-theme="dark"] .calendar-view { background: rgba(0,0,0,.12); }
+    :root[data-theme="dark"] .calendar-card,
+    :root[data-theme="dark"] .calendar-note-card { background: #1f1f1f; border-color: var(--line); }
+    :root[data-theme="dark"] .calendar-day:hover,
+    :root[data-theme="dark"] .calendar-day.selected { background: #303030; }
     :root[data-theme="dark"] .sync-indicator { background: rgba(23,23,23,.94); }
     button, input, textarea, select { font: inherit; color: inherit; }
     button { cursor: pointer; }
@@ -98,6 +103,7 @@
     .app { display: grid; grid-template-columns: 210px minmax(400px, 1fr) 260px; gap: 8px; padding: 8px; height: 100vh; }
     .panel { background: var(--panel); border: 1px solid rgba(255,255,255,.9); border-radius: var(--radius); box-shadow: var(--shadow); backdrop-filter: blur(16px); min-height: 0; }
     .sidebar, .rightbar { padding: 11px; overflow: auto; }
+    .sidebar { display: flex; flex-direction: column; }
     .brand { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; }
     .brand-mark { width: 28px; height: 28px; display: grid; place-items: center; background: var(--ink); color: white; border-radius: 7px; font-weight: 800; font-size: 11px; }
     .brand strong { display: block; letter-spacing: -.04em; }
@@ -112,7 +118,7 @@
     .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
     .nav-item span:nth-child(2), .project-item span:nth-child(2) { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
     .count { color: var(--muted); font-size: 10px; }
-    .user-card { display: flex; align-items: center; gap: 7px; padding: 7px; background: #edf0e9; border-radius: 9px; margin-top: 10px; }
+    .user-card { position: sticky; bottom: 0; z-index: 3; display: flex; align-items: center; gap: 7px; padding: 7px; background: #edf0e9; border-radius: 9px; margin-top: auto; flex: 0 0 auto; box-shadow: 0 -5px 12px rgba(32,42,35,.04); }
     .avatar { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 50%; color: white; font-weight: 800; flex: 0 0 auto; font-size: 10px; }
     .user-card div:nth-child(2) { min-width: 0; flex: 1; }
     .user-card strong, .user-card small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -143,6 +149,24 @@
     .personal-note-image { position: relative; }
     .personal-note-image img { width: 100%; height: 110px; object-fit: cover; border-radius: 10px; cursor: zoom-in; }
     .personal-note-image button { position: absolute; top: 5px; right: 5px; width: 23px; height: 23px; border: 0; border-radius: 50%; background: rgba(20,26,22,.8); color: white; }
+    .calendar-view { flex: 1; min-height: 0; overflow: auto; padding: 12px; background: rgba(255,255,255,.34); }
+    .calendar-layout { width: min(900px, 100%); min-height: 100%; margin: 0 auto; display: grid; grid-template-columns: minmax(360px, 1.35fr) minmax(250px, .8fr); gap: 10px; }
+    .calendar-card, .calendar-note-card { padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.8); }
+    .calendar-toolbar { display: flex; align-items: center; gap: 5px; margin-bottom: 10px; }
+    .calendar-toolbar strong { flex: 1; font-size: 14px; letter-spacing: -.03em; }
+    .calendar-toolbar button { border: 1px solid var(--line); border-radius: 7px; background: transparent; padding: 4px 7px; font-size: 10px; }
+    .calendar-weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+    .calendar-weekdays span { padding: 3px; color: var(--muted); font-size: 9px; font-weight: 800; text-align: center; }
+    .calendar-day { position: relative; min-height: 49px; border: 1px solid transparent; border-radius: 7px; background: transparent; font-size: 10px; text-align: left; vertical-align: top; }
+    .calendar-day:hover { background: #f0f2ed; }
+    .calendar-day.outside { color: color-mix(in srgb, var(--muted) 52%, transparent); }
+    .calendar-day.today { border-color: var(--accent); color: var(--accent); font-weight: 900; }
+    .calendar-day.selected { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+    .calendar-day.has-note::after { content: ""; position: absolute; right: 7px; bottom: 7px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+    .calendar-note-card { display: flex; flex-direction: column; min-height: 320px; }
+    .calendar-note-card h2 { margin: 0; font-size: 14px; letter-spacing: -.03em; }
+    .calendar-note-meta { display: flex; align-items: center; gap: 7px; margin: 2px 0 10px; color: var(--muted); font-size: 9px; }
+    .calendar-note-editor { flex: 1; width: 100%; min-height: 250px; resize: none; border: 0; outline: 0; background: transparent; color: var(--ink); line-height: 1.55; font-size: 11px; }
     .empty { max-width: 360px; margin: 60px auto; text-align: center; color: var(--muted); }
     .empty b { color: var(--ink); display: block; margin-bottom: 7px; }
     .entry { display: grid; grid-template-columns: 28px 1fr; gap: 6px; margin-bottom: 4px; }
@@ -270,6 +294,12 @@
       .personal-note-editor { min-height: calc(var(--app-height) - 112px); font-size: 12px; line-height: 1.5; }
       .personal-note-images { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; margin-bottom: 10px; }
       .personal-note-image img { height: 82px; border-radius: 8px; }
+      .calendar-view { padding: 7px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+      .calendar-layout { display: block; min-height: 0; }
+      .calendar-card, .calendar-note-card { padding: 9px; border-radius: 9px; }
+      .calendar-note-card { margin-top: 7px; min-height: 210px; }
+      .calendar-day { min-height: 38px; padding: 5px; font-size: 9px; }
+      .calendar-note-editor { min-height: 155px; }
       .entry { grid-template-columns: 22px minmax(0, 1fr); gap: 5px; margin-bottom: 4px; }
       .today-group { margin-bottom: 11px; }
       .today-group-head { top: -8px; margin-bottom: 5px; padding: 6px 7px; border-radius: 7px; }
@@ -332,6 +362,7 @@
       <button class="nav-item" data-view="today"><span>◷</span><span>Today's updates</span><span class="count" id="todayCount">0</span></button>
       <button class="nav-item" data-view="pinned"><span>★</span><span>Pinned updates</span><span class="count" id="pinnedCount">0</span></button>
       <button class="nav-item" data-view="all"><span>⌘</span><span>All activity</span><span class="count" id="allCount">0</span></button>
+      <button class="nav-item" data-view="calendar"><span>□</span><span>Calendar</span><span class="count" id="calendarNoteCount">0</span></button>
       <div class="user-card">
         <div class="avatar" id="activeAvatar">C</div>
         <div><strong id="activeName">Clem</strong><small>Current writer</small></div>
@@ -359,6 +390,20 @@
           <h2 id="personalNoteTitle">Personal note</h2>
           <div class="personal-note-images hidden" id="personalNoteImages"></div>
           <textarea class="personal-note-editor" id="personalNoteEditor" placeholder="생각나는 내용을 자유롭게 적으세요..."></textarea>
+        </div>
+      </section>
+      <section class="calendar-view hidden" id="calendarView">
+        <div class="calendar-layout">
+          <div class="calendar-card">
+            <div class="calendar-toolbar"><button data-calendar-month="-1" aria-label="이전 달">‹</button><strong id="calendarMonthTitle"></strong><button data-calendar-today>Today</button><button data-calendar-month="1" aria-label="다음 달">›</button></div>
+            <div class="calendar-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+          </div>
+          <div class="calendar-note-card">
+            <h2 id="calendarNoteTitle"></h2>
+            <div class="calendar-note-meta"><span>Date note</span><span id="calendarNoteStatus"></span></div>
+            <textarea class="calendar-note-editor" id="calendarNoteEditor" placeholder="이 날짜의 일정, 아이디어, 개발 메모를 기록하세요..."></textarea>
+          </div>
         </div>
       </section>
       <section class="composer">
@@ -398,6 +443,7 @@
     const PENDING_SYNC_KEY = "devlog-duo-pending-sync";
     const LAST_LOCATION_KEY = "devlog-duo-last-location";
     const TODAY_COLLAPSED_KEY = "devlog-duo-today-collapsed";
+    const CALENDAR_DATE_KEY = "devlog-duo-calendar-date";
     const REMOTE_ROW_ID = "shared";
     const FILE_BUCKET = "devlog-files";
     const MAX_FILE_BYTES = 50 * 1024 * 1024;
@@ -414,6 +460,7 @@
       },
       projects: [{ id: "general", name: "General", desc: "Shared project", color: "#4d82a8" }],
       entries: [],
+      calendarNotes: {},
       activeUser: null, activeProject: "general", activeView: "project", settings: { showNames: true }, dataVersion: 2
     };
     let state = loadState();
@@ -425,6 +472,8 @@
     let entryDeliveryStatuses = new Map();
     let deliveryStatusTimer = null;
     let viewSwitchTimer = null;
+    let calendarSelectedDate = /^\d{4}-\d{2}-\d{2}$/.test(localStorage.getItem(CALENDAR_DATE_KEY) || "") ? localStorage.getItem(CALENDAR_DATE_KEY) : localDateKey(new Date());
+    let calendarCursor = dateFromKey(calendarSelectedDate);
     let deviceTheme = localStorage.getItem("devlog-duo-theme") || "light";
 
     const $ = s => document.querySelector(s);
@@ -497,6 +546,7 @@
         users: state.users,
         projects: state.projects,
         entries: state.entries,
+        calendarNotes: state.calendarNotes || {},
         settings: state.settings,
         dataVersion: state.dataVersion
       };
@@ -530,6 +580,7 @@
         users: mergeUsers(remote.users, local.users),
         projects: mergeById(remote.projects, local.projects),
         entries: mergeById(remote.entries, local.entries).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)),
+        calendarNotes: { ...(remote.calendarNotes || {}), ...(local.calendarNotes || {}) },
         settings: { ...(remote.settings || {}), ...(local.settings || {}) },
         dataVersion: Math.max(remote.dataVersion || 0, local.dataVersion || 0, seed.dataVersion)
       };
@@ -557,6 +608,7 @@
         users: shared.users || state.users,
         projects: shared.projects || state.projects,
         entries: shared.entries || [],
+        calendarNotes: shared.calendarNotes || state.calendarNotes || {},
         settings: { ...state.settings, ...(shared.settings || {}) },
         dataVersion: shared.dataVersion || state.dataVersion
       };
@@ -737,6 +789,14 @@
         });
     }
     function toast(msg) { const el = $("#toast"); el.textContent = msg; el.classList.remove("hidden"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.add("hidden"), 1800); }
+    function localDateKey(date) {
+      const pad = value => String(value).padStart(2, "0");
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    }
+    function dateFromKey(key) {
+      const [year, month, day] = key.split("-").map(Number);
+      return new Date(year, month - 1, day);
+    }
     function initials(name) { return name.trim().split(/\s+/).map(x => x[0]).join("").slice(0,2).toUpperCase(); }
     function formatTime(ts) { return new Intl.DateTimeFormat("ko-KR", { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" }).format(ts); }
     function formatClock(ts) { return new Intl.DateTimeFormat("ko-KR", { hour:"2-digit", minute:"2-digit" }).format(ts); }
@@ -795,6 +855,7 @@
       $("#pinnedCount").textContent = state.entries.filter(e => e.pinned).length;
       $("#todayCount").textContent = state.entries.filter(e => isToday(e.createdAt)).length;
       $("#allCount").textContent = state.entries.length;
+      $("#calendarNoteCount").textContent = Object.values(state.calendarNotes || {}).filter(note => note?.trim()).length;
     }
     function renderMobileBar() {
       const totalToday = state.entries.filter(entry => isToday(entry.createdAt)).length;
@@ -804,18 +865,18 @@
         return `<option value="project:${p.id}" ${state.activeView === "project" && p.id === state.activeProject ? "selected" : ""}>${escapeHtml(p.name)}${todayCount ? ` · 오늘 ${todayCount}` : ""}</option>`;
       }).join("");
       const noteOptions = Object.values(state.users).map(u => `<option value="note:${u.id}" ${state.activeView === "personalNote" && state.noteUser === u.id ? "selected" : ""}>${escapeHtml(u.name)} 개인 노트</option>`).join("");
-      $("#mobileProjectSelect").innerHTML = `<option value="announcements" ${state.activeView === "announcements" ? "selected" : ""}>📌 공동 노트${announcementToday ? ` · 오늘 ${announcementToday}` : ""}</option><option value="today" ${state.activeView === "today" ? "selected" : ""}>◷ Today's updates${totalToday ? ` · ${totalToday}` : ""}</option><optgroup label="프로젝트">${projectOptions}</optgroup><optgroup label="개인 노트">${noteOptions}</optgroup>`;
+      $("#mobileProjectSelect").innerHTML = `<option value="announcements" ${state.activeView === "announcements" ? "selected" : ""}>📌 공동 노트${announcementToday ? ` · 오늘 ${announcementToday}` : ""}</option><option value="today" ${state.activeView === "today" ? "selected" : ""}>◷ Today's updates${totalToday ? ` · ${totalToday}` : ""}</option><option value="calendar" ${state.activeView === "calendar" ? "selected" : ""}>□ Calendar</option><optgroup label="프로젝트">${projectOptions}</optgroup><optgroup label="개인 노트">${noteOptions}</optgroup>`;
       $("#mobileUserSelect").innerHTML = Object.values(state.users).map(u => `<option value="${u.id}" ${u.id === state.activeUser ? "selected" : ""}>${escapeHtml(u.name)}</option>`).join("");
       $("#mobileUserSelect").style.color = activeUser().color;
     }
     function renderHeader() {
       const project = currentProject();
-      const labels = { project: project.name, announcements: "공동 노트", today: "Today's updates", all: "All activity", pinned: "Pinned updates", personalNote: `${state.users[state.noteUser]?.name || ""} 개인 노트` };
+      const labels = { project: project.name, announcements: "공동 노트", today: "Today's updates", all: "All activity", pinned: "Pinned updates", calendar: "Calendar", personalNote: `${state.users[state.noteUser]?.name || ""} 개인 노트` };
       $("#projectTitle").textContent = labels[state.activeView] || project.name;
       $("#projectTitle").classList.toggle("clickable", state.activeView === "project");
       $("#projectTitle").title = state.activeView === "project" ? "프로젝트 상세정보 열기" : "";
-      $("#projectSubtitle").textContent = state.activeView === "announcements" ? "함께 기록하는 노트" : state.activeView === "personalNote" ? "Private thoughts and ideas" : state.activeView === "project" ? project.desc : "Filtered development journal";
-      $("#searchInput").closest(".search").classList.toggle("hidden", state.activeView === "personalNote");
+      $("#projectSubtitle").textContent = state.activeView === "announcements" ? "함께 기록하는 노트" : state.activeView === "personalNote" ? "Private thoughts and ideas" : state.activeView === "calendar" ? "날짜별 일정과 개발 메모" : state.activeView === "project" ? project.desc : "Filtered development journal";
+      $("#searchInput").closest(".search").classList.toggle("hidden", ["personalNote", "calendar"].includes(state.activeView));
     }
     function getVisibleEntries() {
       let list = [...state.entries];
@@ -833,10 +894,13 @@
     }
     function renderFeed() {
       const personal = state.activeView === "personalNote";
-      $("#feed").classList.toggle("hidden", personal);
-      $(".composer").classList.toggle("hidden", personal);
+      const calendar = state.activeView === "calendar";
+      $("#feed").classList.toggle("hidden", personal || calendar);
+      $(".composer").classList.toggle("hidden", personal || calendar);
       $("#personalNoteView").classList.toggle("hidden", !personal);
+      $("#calendarView").classList.toggle("hidden", !calendar);
       if (personal) return;
+      if (calendar) { renderCalendar(); return; }
       const entries = getVisibleEntries();
       if (!entries.length) { $("#feed").innerHTML = `<div class="empty"><b>아직 기록이 없습니다.</b>첫 개발 업데이트를 남겨보세요. 짧아도 충분합니다.</div>`; return; }
       const groupEntries = entryList => entryList.reduce((groups, entry) => {
@@ -904,6 +968,42 @@
       const pinnedContent = pinnedCollapsed ? "" : pinned.map(renderEntry).join("");
       $("#feed").innerHTML = `<div class="pinned-stack ${pinnedCollapsed ? "collapsed" : ""}">${pinned.length ? `<button class="pinned-header" data-toggle-pinned><span>★ Pinned ${pinned.length}</span><span class="pinned-state">${pinnedCollapsed ? "펼치기" : "접기"}</span></button>${pinnedContent}` : ""}</div>${regular.map(renderEntry).join("")}`;
       $("#feed").scrollTop = $("#feed").scrollHeight;
+    }
+    function renderCalendar() {
+      state.calendarNotes ||= {};
+      const year = calendarCursor.getFullYear();
+      const month = calendarCursor.getMonth();
+      const first = new Date(year, month, 1);
+      const gridStart = new Date(year, month, 1 - first.getDay());
+      const today = localDateKey(new Date());
+      $("#calendarMonthTitle").textContent = new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long" }).format(first);
+      $("#calendarGrid").innerHTML = Array.from({ length: 42 }, (_, index) => {
+        const date = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + index);
+        const key = localDateKey(date);
+        const classes = ["calendar-day"];
+        if (date.getMonth() !== month) classes.push("outside");
+        if (key === today) classes.push("today");
+        if (key === calendarSelectedDate) classes.push("selected");
+        if (state.calendarNotes[key]?.trim()) classes.push("has-note");
+        return `<button class="${classes.join(" ")}" data-calendar-date="${key}" aria-label="${key}">${date.getDate()}</button>`;
+      }).join("");
+      const selectedDate = dateFromKey(calendarSelectedDate);
+      $("#calendarNoteTitle").textContent = new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "long" }).format(selectedDate);
+      const editor = $("#calendarNoteEditor");
+      const keepEditing = document.activeElement === editor && editor.dataset.calendarNoteDate === calendarSelectedDate;
+      editor.dataset.calendarNoteDate = calendarSelectedDate;
+      if (!keepEditing) editor.value = state.calendarNotes[calendarSelectedDate] || "";
+      $("#calendarNoteStatus").textContent = state.calendarNotes[calendarSelectedDate]?.trim() ? "저장됨" : "";
+    }
+    function selectCalendarDate(key) {
+      calendarSelectedDate = key;
+      calendarCursor = dateFromKey(key);
+      localStorage.setItem(CALENDAR_DATE_KEY, key);
+      renderCalendar();
+    }
+    function moveCalendarMonth(offset) {
+      const next = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + offset, 1);
+      selectCalendarDate(localDateKey(next));
     }
     function renderPersonalNote() {
       const user = state.users[state.noteUser] || activeUser();
@@ -1196,6 +1296,9 @@
       if (t.dataset.view) switchView(() => { state.activeView = t.dataset.view; });
       if (t.dataset.pinGroup) togglePinGroup(t);
       if (t.dataset.toggleTodayGroup) toggleTodayGroup(t);
+      if (t.dataset.calendarDate) selectCalendarDate(t.dataset.calendarDate);
+      if (t.dataset.calendarMonth) moveCalendarMonth(Number(t.dataset.calendarMonth));
+      if (t.dataset.calendarToday !== undefined) selectCalendarDate(localDateKey(new Date()));
       if (t.dataset.retrySync !== undefined) {
         entryDeliveryStatuses.forEach((status, id) => {
           if (status === "pending") entryDeliveryStatuses.set(id, "syncing");
@@ -1231,6 +1334,7 @@
       switchView(() => {
         if (type === "announcements") state.activeView = "announcements";
         else if (type === "today") state.activeView = "today";
+        else if (type === "calendar") state.activeView = "calendar";
         else if (type === "note") { state.noteUser = id; state.activeView = "personalNote"; }
         else { state.activeProject = id; state.activeView = "project"; }
       });
@@ -1267,6 +1371,22 @@
       if (!images.length) return;
       e.preventDefault();
       addPersonalNoteImages(images);
+    });
+    $("#calendarNoteEditor").addEventListener("input", e => {
+      const key = e.target.dataset.calendarNoteDate || calendarSelectedDate;
+      const value = e.target.value;
+      state.calendarNotes ||= {};
+      state.calendarNotes[key] = value.trim() ? value : null;
+      saveState();
+      $("#calendarNoteStatus").textContent = "저장 중";
+      const day = $(`[data-calendar-date="${key}"]`);
+      if (day) day.classList.toggle("has-note", Boolean(value.trim()));
+      clearTimeout(window.calendarNoteTimer);
+      window.calendarNoteTimer = setTimeout(() => {
+        if (!saveState(true)) return;
+        $("#calendarNoteStatus").textContent = "저장됨";
+        renderSidebar();
+      }, 400);
     });
     function syncMobileViewport() {
       if (!window.matchMedia("(max-width: 720px)").matches) {
