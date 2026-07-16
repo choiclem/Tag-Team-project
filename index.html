@@ -76,6 +76,7 @@
     :root[data-theme="dark"] .user-choice button { background: #202020; color: var(--ink); }
     :root[data-theme="dark"] .note-area { background: #202020; color: var(--ink); border-color: var(--line); box-shadow: none; }
     :root[data-theme="dark"] .source-label { background: #292929; color: #c4c4c4; }
+    :root[data-theme="dark"] .today-group-head { background: color-mix(in srgb, #202020 93%, var(--project-color)); }
     :root[data-theme="dark"] .file-link,
     :root[data-theme="dark"] .preview-file { background: #202020; }
     :root[data-theme="dark"] .download-link { background: var(--accent); color: #111; }
@@ -131,6 +132,8 @@
     .search input { width: 100%; padding: 6px 9px 6px 30px; border: 1px solid var(--line); background: rgba(255,255,255,.7); border-radius: 8px; outline: none; font-size: 10px; }
     .search span { position: absolute; left: 9px; top: 2px; color: var(--muted); font-size: 19px; line-height: 25px; font-weight: 700; pointer-events: none; }
     .feed { flex: 1; overflow: auto; padding: 10px 12px; scroll-behavior: smooth; }
+    .main .topbar, .main .feed, .main .personal-note-view, .main .composer { transition: opacity .16s ease, transform .16s ease; }
+    .main.view-switching .topbar, .main.view-switching .feed, .main.view-switching .personal-note-view, .main.view-switching .composer { opacity: 0; transform: translateY(3px); }
     .personal-note-view { flex: 1; overflow: auto; padding: 12px; background: rgba(255,255,255,.34); scroll-behavior: smooth; }
     .personal-note-card { max-width: 760px; min-height: 100%; margin: 0 auto; padding: 14px; background: #fffdf3; border: 1px solid #e3dfc9; border-radius: 10px; box-shadow: 0 8px 20px rgba(44,42,27,.045); }
     .personal-note-card h2 { margin: 0 0 5px; font-size: 16px; letter-spacing: -.04em; }
@@ -142,8 +145,16 @@
     .personal-note-image button { position: absolute; top: 5px; right: 5px; width: 23px; height: 23px; border: 0; border-radius: 50%; background: rgba(20,26,22,.8); color: white; }
     .empty { max-width: 360px; margin: 60px auto; text-align: center; color: var(--muted); }
     .empty b { color: var(--ink); display: block; margin-bottom: 7px; }
-    .entry { display: grid; grid-template-columns: 28px 1fr; gap: 6px; margin-bottom: 4px; animation: entryIn .18s ease both; }
+    .entry { display: grid; grid-template-columns: 28px 1fr; gap: 6px; margin-bottom: 4px; }
+    .entry.entry-new { animation: entryIn .24s ease both; }
     @keyframes entryIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .entry.pin-lifting { z-index: 8; pointer-events: none; animation: pinLift .42s cubic-bezier(.2,.75,.25,1) both; }
+    .entry.pin-lifting .bubble { border-color: #d8a43e; box-shadow: 0 0 0 3px rgba(216,164,62,.16), 0 12px 28px rgba(121,83,16,.18); }
+    .entry.pin-arrived { animation: pinArrive .55s cubic-bezier(.2,.8,.25,1) both; }
+    .entry.pin-arrived .bubble { animation: pinGlow .8s ease both; }
+    @keyframes pinLift { 0% { opacity: 1; transform: translateY(0) scale(1); } 45% { opacity: 1; transform: translateY(-8px) scale(1.012); } 100% { opacity: 0; transform: translateY(-30px) scale(.985); } }
+    @keyframes pinArrive { 0% { opacity: 0; transform: translateY(14px) scale(.985); } 65% { opacity: 1; transform: translateY(-2px) scale(1.006); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes pinGlow { 0%, 100% { box-shadow: none; } 35% { border-color: #d8a43e; box-shadow: 0 0 0 4px rgba(216,164,62,.18), 0 8px 24px rgba(121,83,16,.14); } }
     .pinned-stack { position: sticky; top: -10px; z-index: 5; padding: 10px 5px 5px; margin: -10px -5px 3px; background: #dbe6f5; color: #294364; }
     .pinned-stack:empty { display: none; }
     .pinned-stack .entry { margin-bottom: 6px; }
@@ -157,10 +168,21 @@
     .source-label { padding: 2px 6px; border-radius: 6px; background: #edf0e9; color: var(--muted); font-size: 9px; font-weight: 800; }
     .today-group { margin-bottom: 14px; }
     .today-group:last-child { margin-bottom: 0; }
-    .today-group-head { position: sticky; top: -10px; z-index: 4; display: flex; align-items: center; gap: 7px; margin: 0 -2px 7px; padding: 7px 8px; border: 1px solid var(--line); border-left: 3px solid var(--project-color); border-radius: 8px; background: color-mix(in srgb, var(--panel) 95%, var(--project-color)); box-shadow: 0 3px 10px rgba(24,32,27,.05); }
+    .today-group-head { position: sticky; top: -10px; z-index: 4; width: calc(100% + 4px); display: flex; align-items: center; gap: 7px; margin: 0 -2px 7px; padding: 7px 8px; border: 1px solid var(--line); border-left: 3px solid var(--project-color); border-radius: 8px; background: color-mix(in srgb, var(--panel) 95%, var(--project-color)); color: var(--ink); text-align: left; box-shadow: 0 3px 10px rgba(24,32,27,.05); }
     .today-group-head strong { font-size: 11px; }
-    .today-group-head span { margin-left: auto; color: var(--muted); font-size: 9px; font-weight: 700; }
+    .today-group-meta { margin-left: auto; color: var(--muted); font-size: 9px; font-weight: 700; }
+    .today-group-chevron { color: var(--muted); font-size: 11px; transform: rotate(0); transition: transform .2s ease; }
+    .today-group-body { display: grid; grid-template-rows: 1fr; opacity: 1; transition: grid-template-rows .22s ease, opacity .18s ease; }
+    .today-group-body-inner { min-height: 0; overflow: hidden; }
+    .today-group.collapsed .today-group-body { grid-template-rows: 0fr; opacity: 0; }
+    .today-group.collapsed .today-group-chevron { transform: rotate(-90deg); }
     .entry-time { color: var(--muted); font-size: 10px; }
+    .delivery-status { color: var(--muted); font-size: 9px; font-weight: 700; }
+    .delivery-status[data-status="syncing"]::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 4px; border: 1.5px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: syncSpin .7s linear infinite; }
+    .delivery-status[data-status="synced"] { color: #40865f; }
+    .delivery-status[data-status="pending"] { color: #a96f16; }
+    .delivery-status button { margin-left: 4px; padding: 1px 5px; border: 1px solid currentColor; border-radius: 5px; background: transparent; color: inherit; font-size: 9px; font-weight: 800; }
+    @keyframes syncSpin { to { transform: rotate(360deg); } }
     .pin { color: #c58b28; font-size: 11px; }
     .entry-actions { margin-left: auto; opacity: 0; transition: opacity .2s; }
     .entry:hover .entry-actions { opacity: 1; }
@@ -291,6 +313,9 @@
       .entry .avatar { width: 20px; height: 20px; font-size: 7px; }
       .bubble { font-size: 10.5px; padding: 6px 7px; }
     }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
   </style>
 </head>
 <body>
@@ -371,6 +396,8 @@
   <script>
     const STORE_KEY = "devlog-duo-v1";
     const PENDING_SYNC_KEY = "devlog-duo-pending-sync";
+    const LAST_LOCATION_KEY = "devlog-duo-last-location";
+    const TODAY_COLLAPSED_KEY = "devlog-duo-today-collapsed";
     const REMOTE_ROW_ID = "shared";
     const FILE_BUCKET = "devlog-files";
     const MAX_FILE_BYTES = 50 * 1024 * 1024;
@@ -390,14 +417,40 @@
       activeUser: null, activeProject: "general", activeView: "project", settings: { showNames: true }, dataVersion: 2
     };
     let state = loadState();
+    restoreLastLocation();
     let pendingImages = [];
     let pendingFiles = [];
     let pinnedCollapsed = localStorage.getItem("devlog-duo-pinned-collapsed") === "true";
+    let collapsedTodayGroups = new Set(readStoredArray(TODAY_COLLAPSED_KEY));
+    let entryDeliveryStatuses = new Map();
+    let deliveryStatusTimer = null;
+    let viewSwitchTimer = null;
     let deviceTheme = localStorage.getItem("devlog-duo-theme") || "light";
 
     const $ = s => document.querySelector(s);
     const $$ = s => [...document.querySelectorAll(s)];
     const escapeHtml = str => String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+    function readStoredArray(key) {
+      try {
+        const value = JSON.parse(localStorage.getItem(key));
+        return Array.isArray(value) ? value : [];
+      } catch { return []; }
+    }
+    function restoreLastLocation() {
+      try {
+        const location = JSON.parse(localStorage.getItem(LAST_LOCATION_KEY));
+        if (location) {
+          if (location.activeView) state.activeView = location.activeView;
+          if (location.activeProject && state.projects.some(project => project.id === location.activeProject)) state.activeProject = location.activeProject;
+          if (location.noteUser && state.users[location.noteUser]) state.noteUser = location.noteUser;
+          return;
+        }
+      } catch {}
+      if (window.matchMedia("(max-width: 720px)").matches) state.activeView = "today";
+    }
+    function rememberLocation() {
+      localStorage.setItem(LAST_LOCATION_KEY, JSON.stringify({ activeView: state.activeView, activeProject: state.activeProject, noteUser: state.noteUser }));
+    }
     function loadState() {
       try {
         const saved = JSON.parse(localStorage.getItem(STORE_KEY));
@@ -428,6 +481,7 @@
     function saveState(syncRemote = false) {
       try {
         localStorage.setItem(STORE_KEY, JSON.stringify(state));
+        rememberLocation();
         if (syncRemote && !applyingRemoteState) {
           markPendingSync();
           scheduleRemoteSave();
@@ -480,8 +534,23 @@
         dataVersion: Math.max(remote.dataVersion || 0, local.dataVersion || 0, seed.dataVersion)
       };
     }
+    function expandTodayGroupsWithNewEntries(previousEntries = [], nextEntries = []) {
+      if (state.activeView !== "today" || !collapsedTodayGroups.size) return;
+      const countTodayByProject = entries => entries.reduce((counts, entry) => {
+        if (isToday(entry.createdAt)) counts.set(entry.projectId, (counts.get(entry.projectId) || 0) + 1);
+        return counts;
+      }, new Map());
+      const before = countTodayByProject(previousEntries);
+      const after = countTodayByProject(nextEntries);
+      let changed = false;
+      after.forEach((count, projectId) => {
+        if (count > (before.get(projectId) || 0) && collapsedTodayGroups.delete(projectId)) changed = true;
+      });
+      if (changed) localStorage.setItem(TODAY_COLLAPSED_KEY, JSON.stringify([...collapsedTodayGroups]));
+    }
     function applySharedState(shared) {
       if (!shared) return;
+      expandTodayGroupsWithNewEntries(state.entries, shared.entries || []);
       applyingRemoteState = true;
       state = {
         ...state,
@@ -519,8 +588,58 @@
       setSyncStatus(status);
       setSyncWarning("");
     }
+    function deliveryStatusFor(items = []) {
+      const statuses = items.map(item => entryDeliveryStatuses.get(item.id)).filter(Boolean);
+      if (statuses.includes("pending")) return "pending";
+      if (statuses.includes("syncing")) return "syncing";
+      if (statuses.includes("synced")) return "synced";
+      return "";
+    }
+    function deliveryStatusLabel(status) {
+      return { syncing: "동기화 중", synced: "동기화됨 ✓", pending: "로컬 저장 · 재연결 대기" }[status] || "";
+    }
+    function deliveryStatusContent(status) {
+      const label = deliveryStatusLabel(status);
+      return status === "pending" ? `${label}<button data-retry-sync>재시도</button>` : label;
+    }
+    function renderDeliveryStatus(items = []) {
+      const status = deliveryStatusFor(items);
+      if (!status) return "";
+      return `<span class="delivery-status" data-delivery-ids="${items.map(item => escapeHtml(item.id)).join(",")}" data-status="${status}">${deliveryStatusContent(status)}</span>`;
+    }
+    function updateDeliveryIndicators() {
+      $$('[data-delivery-ids]').forEach(element => {
+        const items = element.dataset.deliveryIds.split(",").map(id => ({ id }));
+        const status = deliveryStatusFor(items);
+        element.dataset.status = status;
+        element.innerHTML = deliveryStatusContent(status);
+        element.classList.toggle("hidden", !status);
+      });
+    }
+    function markActiveDeliveries(status, ids = null) {
+      const selectedIds = ids ? new Set(ids) : null;
+      let changed = false;
+      entryDeliveryStatuses.forEach((current, id) => {
+        if ((!selectedIds || selectedIds.has(id)) && ["syncing", "pending"].includes(current)) {
+          entryDeliveryStatuses.set(id, status);
+          changed = true;
+        }
+      });
+      if (!changed) return;
+      updateDeliveryIndicators();
+      if (status === "synced") {
+        clearTimeout(deliveryStatusTimer);
+        deliveryStatusTimer = setTimeout(() => {
+          entryDeliveryStatuses.forEach((current, id) => {
+            if (current === "synced") entryDeliveryStatuses.delete(id);
+          });
+          updateDeliveryIndicators();
+        }, 2600);
+      }
+    }
     function scheduleRemoteSave() {
       if (!supabaseClient) {
+        markActiveDeliveries("pending");
         reportSyncIssue("연결 없음", "온라인 동기화 서버에 연결되지 않았습니다. 이 기기에 먼저 저장하고, 서버가 다시 연결되면 자동으로 올립니다.");
         return;
       }
@@ -539,6 +658,7 @@
         reportSyncIssue("연결 없음", "온라인 동기화 서버에 연결되지 않았습니다. 이 기기에 먼저 저장하고, 서버가 다시 연결되면 자동으로 올립니다.");
         return;
       }
+      const deliveryIds = [...entryDeliveryStatuses].filter(([, status]) => ["syncing", "pending"].includes(status)).map(([id]) => id);
       let error = null;
       try {
         ({ error } = await supabaseClient.from("app_state").upsert({
@@ -549,15 +669,20 @@
       } catch (err) {
         error = err;
       }
-      if (error) reportSyncIssue("동기화 오류", "서버에 저장하지 못했습니다. 이 기기에 먼저 저장하고, 서버가 다시 연결되면 자동으로 올립니다.", error);
+      if (error) {
+        markActiveDeliveries("pending", deliveryIds);
+        reportSyncIssue("동기화 오류", "서버에 저장하지 못했습니다. 이 기기에 먼저 저장하고, 서버가 다시 연결되면 자동으로 올립니다.", error);
+      }
       else {
         clearPendingSync();
         clearSyncIssue("동기화됨");
+        markActiveDeliveries("synced", deliveryIds);
       }
     }
     async function initializeSupabase() {
       const config = window.DEVLOG_SUPABASE || {};
       if (!config.url || !config.anonKey || !window.supabase?.createClient) {
+        if (pendingRemoteSync) markActiveDeliveries("pending");
         reportSyncIssue("설정 필요", "온라인 동기화 설정을 불러오지 못했습니다. 이 기기의 임시 저장소만 사용 중입니다.");
         return;
       }
@@ -571,6 +696,7 @@
         error = err;
       }
       if (error) {
+        if (pendingRemoteSync) markActiveDeliveries("pending");
         reportSyncIssue("연결 오류", "온라인 동기화 서버에 접속하지 못했습니다. 로컬 변경분은 이 기기에 보관되며, 재연결되면 자동으로 올립니다.", error);
         return;
       }
@@ -605,6 +731,7 @@
             else clearSyncIssue("실시간 연결됨");
           }
           if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
+            if (pendingRemoteSync) markActiveDeliveries("pending");
             reportSyncIssue("실시간 오류", "실시간 공유 연결이 끊겼습니다. 새 글은 로컬에 저장되고, 다시 연결되면 자동으로 서버에 올립니다.");
           }
         });
@@ -612,6 +739,7 @@
     function toast(msg) { const el = $("#toast"); el.textContent = msg; el.classList.remove("hidden"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.add("hidden"), 1800); }
     function initials(name) { return name.trim().split(/\s+/).map(x => x[0]).join("").slice(0,2).toUpperCase(); }
     function formatTime(ts) { return new Intl.DateTimeFormat("ko-KR", { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" }).format(ts); }
+    function formatClock(ts) { return new Intl.DateTimeFormat("ko-KR", { hour:"2-digit", minute:"2-digit" }).format(ts); }
     function formatFileSize(bytes = 0) {
       if (bytes < 1024) return `${bytes} B`;
       if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -669,9 +797,14 @@
       $("#allCount").textContent = state.entries.length;
     }
     function renderMobileBar() {
-      const projectOptions = state.projects.map(p => `<option value="project:${p.id}" ${state.activeView === "project" && p.id === state.activeProject ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("");
+      const totalToday = state.entries.filter(entry => isToday(entry.createdAt)).length;
+      const announcementToday = state.entries.filter(entry => entry.projectId === "__announcements__" && isToday(entry.createdAt)).length;
+      const projectOptions = state.projects.map(p => {
+        const todayCount = state.entries.filter(entry => entry.projectId === p.id && isToday(entry.createdAt)).length;
+        return `<option value="project:${p.id}" ${state.activeView === "project" && p.id === state.activeProject ? "selected" : ""}>${escapeHtml(p.name)}${todayCount ? ` · 오늘 ${todayCount}` : ""}</option>`;
+      }).join("");
       const noteOptions = Object.values(state.users).map(u => `<option value="note:${u.id}" ${state.activeView === "personalNote" && state.noteUser === u.id ? "selected" : ""}>${escapeHtml(u.name)} 개인 노트</option>`).join("");
-      $("#mobileProjectSelect").innerHTML = `<option value="announcements" ${state.activeView === "announcements" ? "selected" : ""}>📌 공동 노트</option><option value="today" ${state.activeView === "today" ? "selected" : ""}>◷ Today's updates</option><optgroup label="프로젝트">${projectOptions}</optgroup><optgroup label="개인 노트">${noteOptions}</optgroup>`;
+      $("#mobileProjectSelect").innerHTML = `<option value="announcements" ${state.activeView === "announcements" ? "selected" : ""}>📌 공동 노트${announcementToday ? ` · 오늘 ${announcementToday}` : ""}</option><option value="today" ${state.activeView === "today" ? "selected" : ""}>◷ Today's updates${totalToday ? ` · ${totalToday}` : ""}</option><optgroup label="프로젝트">${projectOptions}</optgroup><optgroup label="개인 노트">${noteOptions}</optgroup>`;
       $("#mobileUserSelect").innerHTML = Object.values(state.users).map(u => `<option value="${u.id}" ${u.id === state.activeUser ? "selected" : ""}>${escapeHtml(u.name)}</option>`).join("");
       $("#mobileUserSelect").style.color = activeUser().color;
     }
@@ -726,12 +859,12 @@
       const renderEntry = e => {
         const u = state.users[e.userId] || { name: "Unknown", color: "#777" };
         const source = e.projectId === "__announcements__" ? "공동 노트" : state.projects.find(p => p.id === e.projectId)?.name || "Unknown project";
-        return `<article class="entry" style="--writer-color:${u.color}">
+        return `<article class="entry ${deliveryStatusFor(e.items) ? "entry-new" : ""}" data-entry-group="${e.items.map(item => escapeHtml(item.id)).join(",")}" style="--writer-color:${u.color}">
           <div class="avatar" style="background:${u.color}">${initials(u.name)}</div>
           <div><div class="entry-head">
             ${state.settings.showNames ? `<span class="entry-name" style="color:${u.color}">${escapeHtml(u.name)}</span>` : ""}
             ${state.activeView === "today" ? `<span class="source-label">${escapeHtml(source)}</span>` : ""}
-            <span class="entry-time">${formatTime(e.createdAt)}</span>${e.pinned ? `<span class="pin">★ pinned</span>` : ""}
+            <span class="entry-time">${formatTime(e.createdAt)}</span>${renderDeliveryStatus(e.items)}${e.pinned ? `<span class="pin">★ pinned</span>` : ""}
             <span class="entry-actions"><button data-pin-group="${e.items.map(item => item.id).join(",")}">${e.pinned ? "Unpin" : "Pin"}</button><button data-delete-group="${e.items.map(item => item.id).join(",")}">Delete</button></span>
           </div><div class="bubble">${escapeHtml(e.text)}${e.images.map(src => `<img src="${src}" alt="Attached image">`).join("")}${renderFileLinks(e.files || [])}</div>
           </div>
@@ -748,14 +881,21 @@
             id: projectId,
             name: projectId === "__announcements__" ? "공동 노트" : project?.name || "Unknown project",
             color: projectId === "__announcements__" ? "#d39a36" : project?.color || "#777777",
-            items: items.sort((a, b) => a.createdAt - b.createdAt),
+            items: items.sort((a, b) => {
+              if (Boolean(a.pinned) !== Boolean(b.pinned)) return Number(b.pinned) - Number(a.pinned);
+              if (a.pinned && b.pinned) return (a.pinnedAt || a.createdAt) - (b.pinnedAt || b.createdAt);
+              return a.createdAt - b.createdAt;
+            }),
             latestAt: Math.max(...items.map(item => item.createdAt))
           };
         }).sort((a, b) => a.latestAt - b.latestAt);
-        $("#feed").innerHTML = projectGroups.map(group => `<section class="today-group" style="--project-color:${escapeHtml(group.color)}">
-          <div class="today-group-head"><strong>${escapeHtml(group.name)}</strong><span>${group.items.length} updates</span></div>
-          ${groupEntries(group.items).map(renderEntry).join("")}
-        </section>`).join("");
+        $("#feed").innerHTML = projectGroups.map(group => {
+          const collapsed = collapsedTodayGroups.has(group.id);
+          return `<section class="today-group ${collapsed ? "collapsed" : ""}" data-today-group="${escapeHtml(group.id)}" style="--project-color:${escapeHtml(group.color)}">
+          <button class="today-group-head" data-toggle-today-group="${escapeHtml(group.id)}" aria-expanded="${!collapsed}"><strong>${escapeHtml(group.name)}</strong><span class="today-group-meta">${group.items.length} updates · 마지막 ${formatClock(group.latestAt)}</span><span class="today-group-chevron">▾</span></button>
+          <div class="today-group-body"><div class="today-group-body-inner">${groupEntries(group.items).map(renderEntry).join("")}</div></div>
+        </section>`;
+        }).join("");
         $("#feed").scrollTop = $("#feed").scrollHeight;
         return;
       }
@@ -798,16 +938,81 @@
       $("#userChoices").innerHTML = Object.values(state.users).map(u => `<button data-choose-user="${u.id}"><span class="avatar" style="background:${u.color}">${initials(u.name)}</span><strong>${escapeHtml(u.name)}</strong></button>`).join("");
     }
     function chooseUser(id) { state.activeUser = id; saveState(); $("#userModal").classList.add("hidden"); render(); toast(`${state.users[id].name}으로 전환했습니다`); }
+    function switchView(update) {
+      clearTimeout(viewSwitchTimer);
+      const main = $(".main");
+      main.classList.add("view-switching");
+      viewSwitchTimer = setTimeout(() => {
+        update();
+        saveState();
+        render();
+        requestAnimationFrame(() => requestAnimationFrame(() => main.classList.remove("view-switching")));
+      }, 100);
+    }
+    function toggleTodayGroup(button) {
+      const id = button.dataset.toggleTodayGroup;
+      const section = button.closest("[data-today-group]");
+      if (!section) return;
+      const collapsed = section.classList.toggle("collapsed");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      if (collapsed) collapsedTodayGroups.add(id);
+      else collapsedTodayGroups.delete(id);
+      localStorage.setItem(TODAY_COLLAPSED_KEY, JSON.stringify([...collapsedTodayGroups]));
+    }
+    async function togglePinGroup(button) {
+      const ids = button.dataset.pinGroup.split(",");
+      const selected = state.entries.filter(entry => ids.includes(entry.id));
+      if (!selected.length) return;
+      const shouldPin = !selected.every(entry => entry.pinned);
+      const article = button.closest(".entry");
+      if (shouldPin && article) {
+        button.textContent = "Pinned ✓";
+        article.classList.add("pin-lifting");
+        const delay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 20 : 400;
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+      const pinGroupId = crypto.randomUUID();
+      const pinnedAt = Date.now();
+      selected.forEach(entry => {
+        entry.pinned = shouldPin;
+        if (shouldPin) {
+          entry.pinGroupId = pinGroupId;
+          entry.pinnedAt = pinnedAt;
+        } else {
+          delete entry.pinGroupId;
+          delete entry.pinnedAt;
+        }
+      });
+      if (shouldPin) {
+        pinnedCollapsed = false;
+        localStorage.setItem("devlog-duo-pinned-collapsed", "false");
+      }
+      saveState(true);
+      render();
+      if (shouldPin) {
+        const arrived = $$("[data-entry-group]").find(entry => entry.dataset.entryGroup.split(",").includes(ids[0]));
+        if (arrived) {
+          arrived.classList.add("pin-arrived");
+          arrived.scrollIntoView({ behavior: "smooth", block: state.activeView === "today" ? "center" : "start" });
+          setTimeout(() => arrived.classList.remove("pin-arrived"), 850);
+        }
+        toast("상단에 고정했습니다");
+      } else {
+        toast("고정을 해제했습니다");
+      }
+    }
     function postEntry() {
       const text = $("#messageInput").value.trim();
       if (!text && !pendingImages.length && !pendingFiles.length) return toast("내용, 사진 또는 파일을 추가해주세요");
       const targetView = state.activeView === "announcements" ? "announcements" : "project";
       const entry = { id: crypto.randomUUID(), projectId: targetView === "announcements" ? "__announcements__" : state.activeProject, userId: state.activeUser, text, images: [...pendingImages], files: [...pendingFiles], pinned: false, createdAt: Date.now() };
       state.entries.push(entry);
+      entryDeliveryStatuses.set(entry.id, "syncing");
       state.activeView = targetView;
       $("#searchInput").value = "";
       if (!saveState(true)) {
         state.entries = state.entries.filter(e => e.id !== entry.id);
+        entryDeliveryStatuses.delete(entry.id);
         return;
       }
       $("#messageInput").value = "";
@@ -960,29 +1165,20 @@
       const t = e.target.closest("button, img");
       if (!t) return;
       if (t.dataset.chooseUser) chooseUser(t.dataset.chooseUser);
-      if (t.dataset.announcements !== undefined) { state.activeView = "announcements"; saveState(); render(); }
-      if (t.dataset.project) { state.activeProject = t.dataset.project; state.activeView = "project"; saveState(); render(); }
+      if (t.dataset.announcements !== undefined) switchView(() => { state.activeView = "announcements"; });
+      if (t.dataset.project) switchView(() => { state.activeProject = t.dataset.project; state.activeView = "project"; });
       if (t.dataset.deleteProject) deleteProject(t.dataset.deleteProject);
-      if (t.dataset.personalNote) { state.noteUser = t.dataset.personalNote; state.activeView = "personalNote"; saveState(); render(); }
-      if (t.dataset.view) { state.activeView = t.dataset.view; render(); }
-      if (t.dataset.pinGroup) {
-        const ids = t.dataset.pinGroup.split(",");
-        const selected = state.entries.filter(x => ids.includes(x.id));
-        const shouldPin = !selected.every(x => x.pinned);
-        const pinGroupId = crypto.randomUUID();
-        const pinnedAt = Date.now();
-        selected.forEach(x => {
-          x.pinned = shouldPin;
-          if (shouldPin) {
-            x.pinGroupId = pinGroupId;
-            x.pinnedAt = pinnedAt;
-          } else {
-            delete x.pinGroupId;
-            delete x.pinnedAt;
-          }
+      if (t.dataset.personalNote) switchView(() => { state.noteUser = t.dataset.personalNote; state.activeView = "personalNote"; });
+      if (t.dataset.view) switchView(() => { state.activeView = t.dataset.view; });
+      if (t.dataset.pinGroup) togglePinGroup(t);
+      if (t.dataset.toggleTodayGroup) toggleTodayGroup(t);
+      if (t.dataset.retrySync !== undefined) {
+        entryDeliveryStatuses.forEach((status, id) => {
+          if (status === "pending") entryDeliveryStatuses.set(id, "syncing");
         });
-        saveState(true); render();
-        if (shouldPin) $("#feed").scrollTop = 0;
+        updateDeliveryIndicators();
+        setSyncStatus("재동기화 중");
+        initializeSupabase();
       }
       if (t.closest("[data-toggle-pinned]")) {
         pinnedCollapsed = !pinnedCollapsed;
@@ -1008,11 +1204,12 @@
     $("#searchInput").addEventListener("input", renderFeed);
     $("#mobileProjectSelect").addEventListener("change", e => {
       const [type, id] = e.target.value.split(":");
-      if (type === "announcements") state.activeView = "announcements";
-      else if (type === "today") state.activeView = "today";
-      else if (type === "note") { state.noteUser = id; state.activeView = "personalNote"; }
-      else { state.activeProject = id; state.activeView = "project"; }
-      saveState(); render();
+      switchView(() => {
+        if (type === "announcements") state.activeView = "announcements";
+        else if (type === "today") state.activeView = "today";
+        else if (type === "note") { state.noteUser = id; state.activeView = "personalNote"; }
+        else { state.activeProject = id; state.activeView = "project"; }
+      });
     });
     $("#mobileUserSelect").addEventListener("change", e => chooseUser(e.target.value));
     $("#imageBtn").onclick = () => $("#imageInput").click();
@@ -1091,7 +1288,6 @@
     });
     $("#lightbox").onclick = () => $("#lightbox").classList.add("hidden");
     applyTheme(deviceTheme);
-    if (window.matchMedia("(max-width: 720px)").matches) state.activeView = "today";
     render();
     if (!state.activeUser) $("#userModal").classList.remove("hidden");
     initializeSupabase();
