@@ -40,8 +40,23 @@ set public = true,
 
 drop policy if exists "Anyone can read devlog files" on storage.objects;
 
+drop policy if exists "Anyone can select devlog files for deletion" on storage.objects;
+create policy "Anyone can select devlog files for deletion"
+on storage.objects for select
+to anon
+using (
+  bucket_id = 'devlog-files'
+  and storage.allow_only_operation('object.delete_many')
+);
+
 drop policy if exists "Anyone can upload devlog files" on storage.objects;
 create policy "Anyone can upload devlog files"
 on storage.objects for insert
 to anon
 with check (bucket_id = 'devlog-files');
+
+drop policy if exists "Anyone can delete devlog files" on storage.objects;
+create policy "Anyone can delete devlog files"
+on storage.objects for delete
+to anon
+using (bucket_id = 'devlog-files');

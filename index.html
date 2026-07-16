@@ -1091,6 +1091,30 @@
         reportSyncIssue("파일 오류", `파일을 저장하지 못했습니다: ${readableError(error)}`, error);
       }
     }
+    async function deleteEntryGroup(ids) {
+      if (prompt("삭제 비밀번호 1234를 입력하세요") !== "1234") return toast("비밀번호가 맞지 않아 삭제하지 않았습니다");
+      const selected = state.entries.filter(entry => ids.includes(entry.id));
+      if (!selected.length) return;
+      const paths = [...new Set(selected.flatMap(entry => (entry.files || []).map(file => file.path).filter(Boolean)))];
+      if (paths.length) {
+        if (!supabaseClient) return reportSyncIssue("파일 삭제 오류", "Storage 서버에 연결되지 않아 기록을 삭제하지 않았습니다. 연결 후 다시 시도해주세요.");
+        toast("첨부 파일과 기록을 삭제하는 중입니다");
+        let removed = [];
+        let error = null;
+        try {
+          ({ data: removed, error } = await supabaseClient.storage.from(FILE_BUCKET).remove(paths));
+        } catch (caught) {
+          error = caught;
+        }
+        if (!error && removed?.length !== paths.length) error = new Error("Storage가 일부 파일을 삭제하지 않았습니다");
+        if (error) return reportSyncIssue("파일 삭제 오류", `첨부 파일을 삭제하지 못해 기록을 유지했습니다: ${readableError(error)}`, error);
+      }
+      state.entries = state.entries.filter(entry => !ids.includes(entry.id));
+      ids.forEach(id => entryDeliveryStatuses.delete(id));
+      saveState(true);
+      render();
+      toast(paths.length ? "첨부 파일과 기록을 삭제했습니다" : "기록을 삭제했습니다");
+    }
     async function addPersonalNoteImages(files) {
       const images = [...files].filter(file => file && file.type.startsWith("image/"));
       if (!images.length) return;
@@ -1185,8 +1209,8 @@
         localStorage.setItem("devlog-duo-pinned-collapsed", String(pinnedCollapsed));
         renderFeed();
       }
-      if (t.dataset.delete && confirm("이 기록을 삭제할까요?")) { state.entries = state.entries.filter(x => x.id !== t.dataset.delete); saveState(true); render(); }
-      if (t.dataset.deleteGroup && confirm("묶인 기록을 모두 삭제할까요?")) { const ids = t.dataset.deleteGroup.split(","); state.entries = state.entries.filter(x => !ids.includes(x.id)); saveState(true); render(); }
+      if (t.dataset.delete) deleteEntryGroup([t.dataset.delete]);
+      if (t.dataset.deleteGroup) deleteEntryGroup(t.dataset.deleteGroup.split(","));
       if (t.dataset.deleteNoteImage !== undefined) {
         const user = state.users[state.noteUser] || activeUser();
         user.personalImages.splice(Number(t.dataset.deleteNoteImage), 1);
