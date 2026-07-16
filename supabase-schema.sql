@@ -39,10 +39,6 @@ set public = true,
     file_size_limit = 52428800;
 
 drop policy if exists "Anyone can read devlog files" on storage.objects;
-create policy "Anyone can read devlog files"
-on storage.objects for select
-to anon
-using (bucket_id = 'devlog-files');
 
 drop policy if exists "Anyone can upload devlog files" on storage.objects;
 create policy "Anyone can upload devlog files"

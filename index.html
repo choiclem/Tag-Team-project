@@ -361,6 +361,7 @@
     const PENDING_SYNC_KEY = "devlog-duo-pending-sync";
     const REMOTE_ROW_ID = "shared";
     const FILE_BUCKET = "devlog-files";
+    const MAX_FILE_BYTES = 50 * 1024 * 1024;
     let supabaseClient = null;
     let realtimeChannel = null;
     let remoteSaveTimer = null;
@@ -498,6 +499,9 @@
       setSyncWarning(message);
       if (error) console.error(message, error);
       if (pendingRemoteSync) scheduleSyncRetry();
+    }
+    function readableError(error) {
+      return error?.message || error?.error_description || error?.error || "알 수 없는 오류";
     }
     function clearSyncIssue(status = "동기화됨") {
       setSyncStatus(status);
@@ -825,6 +829,8 @@
       const list = [...files].filter(file => file && !file.type.startsWith("image/"));
       if (!list.length) return;
       if (!supabaseClient) return reportSyncIssue("파일 오류", "파일 저장은 Supabase Storage 연결이 필요합니다. 연결 후 다시 시도해주세요.");
+      const oversized = list.find(file => file.size > MAX_FILE_BYTES);
+      if (oversized) return reportSyncIssue("파일 오류", `"${oversized.name}" 파일이 50MB보다 큽니다. 더 작은 파일로 올려주세요.`);
       toast("파일을 업로드하는 중입니다");
       try {
         for (const file of list) {
@@ -833,7 +839,7 @@
         }
         toast("파일을 첨부했습니다");
       } catch (error) {
-        reportSyncIssue("파일 오류", "파일을 저장하지 못했습니다. Storage bucket 설정을 확인해주세요.", error);
+        reportSyncIssue("파일 오류", `파일을 저장하지 못했습니다: ${readableError(error)}`, error);
       }
     }
     async function addPersonalNoteImages(files) {
