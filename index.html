@@ -1260,10 +1260,16 @@
       }
     }
     async function deleteEntryGroup(ids) {
-      if (prompt("삭제 비밀번호 1234를 입력하세요") !== "1234") return toast("비밀번호가 맞지 않아 삭제하지 않았습니다");
       const selected = state.entries.filter(entry => ids.includes(entry.id));
       if (!selected.length) return;
       const paths = [...new Set(selected.flatMap(entry => (entry.files || []).map(file => file.path).filter(Boolean)))];
+      const hasImages = selected.some(entry => (entry.images || []).length || entry.image);
+      const hasAttachments = paths.length > 0 || hasImages;
+      if (hasAttachments) {
+        if (prompt("첨부 항목 삭제 비밀번호 1234를 입력하세요") !== "1234") return toast("비밀번호가 맞지 않아 삭제하지 않았습니다");
+      } else if (!confirm(ids.length > 1 ? "묶인 텍스트 기록을 모두 삭제할까요?" : "이 텍스트 기록을 삭제할까요?")) {
+        return;
+      }
       if (paths.length) {
         if (!supabaseClient) return reportSyncIssue("파일 삭제 오류", "Storage 서버에 연결되지 않아 기록을 삭제하지 않았습니다. 연결 후 다시 시도해주세요.");
         toast("첨부 파일과 기록을 삭제하는 중입니다");
@@ -1281,7 +1287,7 @@
       ids.forEach(id => entryDeliveryStatuses.delete(id));
       saveState(true);
       render();
-      toast(paths.length ? "첨부 파일과 기록을 삭제했습니다" : "기록을 삭제했습니다");
+      toast(hasAttachments ? "첨부 항목과 기록을 삭제했습니다" : "텍스트 기록을 삭제했습니다");
     }
     async function addPersonalNoteImages(files) {
       const images = [...files].filter(file => file && file.type.startsWith("image/"));
