@@ -46,6 +46,7 @@
     :root[data-theme="dark"] .mobile-bar { border-color: var(--line); }
     :root[data-theme="dark"] .composer,
     :root[data-theme="dark"] .mobile-bar { background: var(--panel); }
+    :root[data-theme="dark"] .composer.drag-over::after { background: color-mix(in srgb, #202020 88%, var(--accent)); }
     :root[data-theme="dark"] .user-switch,
     :root[data-theme="dark"] .bubble,
     :root[data-theme="dark"] .search input,
@@ -234,7 +235,9 @@
     .file-link strong { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 11px; }
     .file-link small { color: var(--muted); font-size: 9px; }
     .download-link { flex: 0 0 auto; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--ink); color: white; font-size: 10px; font-weight: 800; text-decoration: none; }
-    .composer { border-top: 1px solid var(--line); padding: 7px 10px 9px; background: rgba(255,255,255,.45); }
+    .composer { position: relative; border-top: 1px solid var(--line); padding: 7px 10px 9px; background: rgba(255,255,255,.45); }
+    .composer.drag-over::after { content: "파일을 놓으면 첨부됩니다"; position: absolute; inset: 5px; z-index: 8; display: grid; place-items: center; border: 2px dashed var(--accent); border-radius: 9px; background: color-mix(in srgb, var(--accent-soft) 90%, white); color: var(--accent); font-size: 12px; font-weight: 850; pointer-events: none; }
+    .composer.drag-over > * { opacity: .18; }
     .preview { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
     .preview-item { position: relative; display: inline-block; }
     .preview-file { position: relative; min-width: 150px; max-width: 220px; padding: 7px 28px 7px 8px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.78); font-size: 10px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -503,6 +506,7 @@
     let secretNoteSession = null;
     let secretNoteSaveTimer = null;
     let secretNoteSaveQueue = Promise.resolve();
+    let composerDragDepth = 0;
     let deviceTheme = localStorage.getItem("devlog-duo-theme") || "light";
 
     const $ = s => document.querySelector(s);
@@ -1260,6 +1264,14 @@
         reportSyncIssue("파일 오류", `파일을 저장하지 못했습니다: ${readableError(error)}`, error);
       }
     }
+    async function addDroppedFiles(files) {
+      const dropped = [...files].filter(Boolean);
+      if (!dropped.length) return;
+      const images = dropped.filter(file => file.type.startsWith("image/"));
+      const general = dropped.filter(file => !file.type.startsWith("image/"));
+      if (images.length) await addImageFiles(images);
+      if (general.length) await addGeneralFiles(general);
+    }
     async function deleteEntryGroup(ids) {
       const selected = state.entries.filter(entry => ids.includes(entry.id));
       if (!selected.length) return;
@@ -1491,6 +1503,35 @@
     $("#imageInput").onchange = e => { addImageFiles(e.target.files); e.target.value = ""; };
     $("#fileBtn").onclick = () => $("#fileInput").click();
     $("#fileInput").onchange = e => { addGeneralFiles(e.target.files); e.target.value = ""; };
+    const composerDropZone = $(".composer");
+    const containsDraggedFiles = event => Array.from(event.dataTransfer?.types || []).includes("Files") || Boolean(event.dataTransfer?.files?.length);
+    composerDropZone.addEventListener("dragenter", e => {
+      if (!containsDraggedFiles(e)) return;
+      e.preventDefault();
+      composerDragDepth += 1;
+      composerDropZone.classList.add("drag-over");
+    });
+    composerDropZone.addEventListener("dragover", e => {
+      if (!containsDraggedFiles(e)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    });
+    composerDropZone.addEventListener("dragleave", e => {
+      if (!composerDragDepth) return;
+      composerDragDepth = Math.max(0, composerDragDepth - 1);
+      if (!composerDragDepth) composerDropZone.classList.remove("drag-over");
+    });
+    composerDropZone.addEventListener("drop", e => {
+      if (!containsDraggedFiles(e)) return;
+      e.preventDefault();
+      composerDragDepth = 0;
+      composerDropZone.classList.remove("drag-over");
+      addDroppedFiles(e.dataTransfer.files);
+    });
+    composerDropZone.addEventListener("dragend", () => {
+      composerDragDepth = 0;
+      composerDropZone.classList.remove("drag-over");
+    });
     $("#messageInput").addEventListener("paste", e => {
       const images = [...e.clipboardData.items].filter(item => item.type.startsWith("image/")).map(item => item.getAsFile()).filter(Boolean);
       if (!images.length) return;
