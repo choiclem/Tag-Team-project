@@ -471,6 +471,7 @@
     const REMOTE_ROW_ID = "shared";
     const FILE_BUCKET = "devlog-files";
     const MAX_FILE_BYTES = 50 * 1024 * 1024;
+    const MESSAGE_GROUP_WINDOW_MS = 20 * 1000;
     let supabaseClient = null;
     let realtimeChannel = null;
     let remoteSaveTimer = null;
@@ -949,7 +950,7 @@
       const groupEntries = entryList => entryList.reduce((groups, entry) => {
         const previous = groups[groups.length - 1];
         const samePinnedGroup = previous && previous.pinned && entry.pinned && previous.pinGroupId && previous.pinGroupId === entry.pinGroupId;
-        const sameRegularGroup = previous && !previous.pinned && !entry.pinned && previous.userId === entry.userId && previous.projectId === entry.projectId && entry.createdAt - previous.createdAt <= 60000;
+        const sameRegularGroup = previous && !previous.pinned && !entry.pinned && previous.userId === entry.userId && previous.projectId === entry.projectId && entry.createdAt - previous.createdAt <= MESSAGE_GROUP_WINDOW_MS;
         if (samePinnedGroup || sameRegularGroup) {
           previous.items.push(entry);
           previous.text = previous.items.map(item => item.text).filter(Boolean).join("\n");
